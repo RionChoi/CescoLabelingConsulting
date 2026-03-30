@@ -1,0 +1,819 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+
+<script type="text/javascript">    
+    // start date
+    Vue.component('datePickerFrom', {
+        template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+        props: ['val'],
+        mounted: function() {
+            drawDatePicker(this, 'on-change-start-date');
+        },
+        beforeDestroy: function(){
+            destroyDatePicker(this);
+        },
+        methods: {
+        }
+    });
+    // end date
+    Vue.component('datePickerTo', {
+        template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+        props: ['val'],
+        mounted: function() {
+            drawDatePicker(this, 'on-change-end-date');
+        },
+        beforeDestroy: function(){
+            destroyDatePicker(this);
+        },
+        methods: {
+        }
+    });
+</script>
+
+<script type="text/javascript">
+    
+	var vue
+    $(document).ready(function(){
+
+        vue = new Vue({
+            el: '#app',
+            data: {
+                // 조회 정보
+                accSearch   :{
+                    start_date              : '',       // 등록일 시작 '20221101'
+                    end_date                : '',       // 등록일 끝 '20221101'
+                    cst_id                  : '',       // 소속사 코드
+                    user_nm                 : '',       // 사용자명
+                    user_id                 : '',       // 사용자ID
+                    consult_cnt             : '0',      // 참여중
+                    status                  : '',       // 상태
+                    cst_tp_cd               : '',       // 고객사 유형
+                },
+                cusSearchTypeList           : [],       // 검색용 고객사 유형
+
+                // 계정 정보
+                accUserInfo : {
+                    user_id             : '',       // 사용자ID
+                    user_nm             : '',       // 사용자명
+                    cst_id              : '',       // 회사코드
+                    cst_nm              : '',       // 회사명
+                    cst_tp_cd           : '',       // 고객사유형
+                    user_tp_cd          : '',       // 사용자유형
+                    user_ref_id         : '',       // 사용자연결코드
+                    email               : '',       // 이메일
+                    tel_no              : '',       // 전화번호
+                    mphone_no           : '',       // 핸드폰
+                    fax_no              : '',       // 팩스                    
+                    user_posit_nm       : '',       // 직위명
+                    user_dept_nm        : '',       // 부서명
+                    user_dept_nm_view   : '',       // 부서명 세스코 전용
+                    status              : 'Y',      // 상태
+                    rgstr_dt            : '',       // 등록일
+                    rgstr_nm            : '',       // 등록자
+                    rgstr_id            : '',       // 등록ID
+                    mdfr_dt             : '',       // 수정일
+                    mdfr_nm             : '',       // 수정자
+                    mdfr_id             : '',       // 수정ID
+                    consult_cnt         : '0',      // 참여 컨설팅
+                    notice1_yn          : 'Y',      // 신규의뢰시 알림
+	                notice2_yn          : 'Y',      // 멘션 알림
+	                notice3_yn          : 'Y',      // 참여컨설팅 알림
+	                notice4_yn          : 'Y'       // 견젹서 및 입금확인 알림
+                },
+                        
+                useAgreeList            : [],       // 수신 동의, 미동의
+                useStateList            : [],       // 상태
+                compList                : [],       // 소속 회사 목록
+                cusTypeList             : [],       // 고객사 유형
+                userTypeList            : [],       // 사용자 유형
+                chkUpt                  : false,    // 등록:true 수정:false
+                chkCusEmail             : false,    // 
+                custSelIndex            : 0         // 소속사 선택 값
+
+            },
+
+            mounted(){
+
+                let _this = this;
+                let param = [
+                    {cmm_cd:'FS008', arr_nm:'cusTypeList', comboType:'select'},             // FS008 고객사 유형
+                    {cmm_cd:'FS012', arr_nm:'userTypeList', comboType:'select'},            // FS012 사용자 유형
+                    {cmm_cd:'FS008', arr_nm:'cusSearchTypeList', comboType:'all'},          // FS008 고객사 유형
+                ];      
+                getCodeListForArrNm(param, _this, function(){
+                    _this.drawGrid();
+                });
+
+                // 소속사 목록
+                _this.getComList();  
+                
+            },
+
+            methods: {                
+                // 소속사 목록
+                getComList: function(){
+                    let _this = this;
+
+                    axiosCall('post', '/acc/api/comList', {}, function(response) {
+                        _this.compList = response.data;
+                    });
+                },
+                
+                // 이메일 중복 체크
+                onCheckCusEmail: function(){
+
+                    let _this = this;
+
+                    if(this.accUserInfo.email.trim() === ''){
+                        alert('이메일을 입력해 주세요.');
+                        return false;
+                    }
+
+                    if(!emailCheck(_this.accUserInfo.email)){
+                        alert('이메일 형식이 정확하지 않습니다.\n예시) ex@cesco.co.kr'); 
+                        return false;
+                    }
+                    
+                    axiosCall('get', '/acc/api/chkUserEmail', { email : _this.accUserInfo.email.trim(), user_id : _this.accUserInfo.user_id.trim()}, function(response) {
+
+                        if(_this.accUserInfo.cst_tp_cd === '03'){
+
+                            if(response.data.length === 0){
+                                alert('세스코 직원 이메일이 아닙니다.');
+                                return false;
+                            }else{
+                                _this.accUserInfo.user_dept_nm_view = response.data.staff_dept_nm;
+                                _this.accUserInfo.user_ref_id = response.data.staff_id;
+                                _this.accUserInfo.user_nm = response.data.staff_nm;
+                                _this.chkCusEmail = true;
+                            }
+
+                        }else{
+                            _this.chkCusEmail = true;
+                        }
+                        
+                    });
+
+                },
+
+                // 이메일 재입력
+                onReCusEmail: function(){
+                    let _this = this;
+                    _this.chkCusEmail = false;
+                },
+
+                // 계정 신규
+                insCusInfo: function(){
+
+                    $('#jqxGrid').jqxGrid('clearselection');
+
+                    let _this = this;
+                    
+                    _this.accUserInfo.user_id         = '';     // 사용자ID
+                    _this.accUserInfo.user_nm         = '';     // 사용자명                    
+                    _this.accUserInfo.cst_id          = '';     // 회사코드
+                    _this.accUserInfo.cst_nm          = '';     // 회사명
+                    _this.accUserInfo.user_tp_cd      = '';     // 사용자유형
+                    _this.accUserInfo.user_ref_id     = '';     // 사용자연결코드
+                    _this.accUserInfo.email           = '';     // 이메일                    
+                    _this.accUserInfo.mphone_no       = '';     // 핸드폰                    
+                    _this.accUserInfo.cst_tp_cd       = '';     // 고객사유형
+                    _this.accUserInfo.user_posit_nm   = '';     // 직위명
+                    _this.accUserInfo.user_dept_nm    = '';     // 부서명
+                    _this.accUserInfo.user_dept_nm_view    = '';     // 부서명(세스코전용)
+                    _this.accUserInfo.status          = 'Y';    // 상태
+                    _this.accUserInfo.rgstr_dt        = '';     // 등록일
+                    _this.accUserInfo.rgstr_nm        = '';     // 등록자
+                    _this.accUserInfo.rgstr_id        = '';     // 등록ID
+                    _this.accUserInfo.mdfr_dt         = '';     // 수정일
+                    _this.accUserInfo.mdfr_nm         = '';     // 수정자
+                    _this.accUserInfo.mdfr_id         = '';     // 수정ID
+                    _this.accUserInfo.consult_cnt     = '0';    // 참여 컨설팅
+                    _this.accUserInfo.notice1_yn      = 'Y';    // 신규의뢰시 알림
+	                _this.accUserInfo.notice2_yn      = 'Y';    // 멘션 알림
+	                _this.accUserInfo.notice3_yn      = 'Y';    // 참여컨설팅 알림
+	                _this.accUserInfo.notice4_yn      = 'Y';    // 견젹서 및 입금확인 알림
+                    
+                    _this.chkUpt                      = false;
+                    _this.chkCusEmail                 = false;
+
+                },
+
+                chkConsult: function(){
+                    if(this.accUserInfo.consult_cnt > 0){
+                        alert('참여중인 컨설팅이 있어 변경이 불가능 합니다.');
+                    }
+                },
+                
+                onChgCstTpCd: function(){
+
+                    let _this = this;
+                    _this.onReCusEmail();
+                    _this.accUserInfo.user_dept_nm_view = '';
+                    _this.accUserInfo.user_ref_id = '';
+                    _this.accUserInfo.user_nm = '';                  
+                    if(_this.accUserInfo.cst_tp_cd === '03') {
+                        _this.accUserInfo.cst_id = '10000000';
+                        _this.accUserInfo.cst_nm = '세스코';
+                    }else{
+                        _this.accUserInfo.cst_id = '';
+                        _this.accUserInfo.cst_nm = '';
+                    }
+
+                },
+
+                // 계정 정보 등록
+                setCusInfo: function(){
+
+                    let _this = this;                    
+
+                    if(_this.accUserInfo.cst_tp_cd.trim() === ''){
+                        alert('고객사 유형을 선택해 주세요.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.user_tp_cd.trim() === ''){
+                        alert('사용자 유형을 선택해 주세요.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.cst_tp_cd !== '03' &&  _this.accUserInfo.user_tp_cd !== '01'){
+                        alert('고객사, 협력사는 고객만 선택이 가능합니다.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.cst_tp_cd === '03' &&  _this.accUserInfo.user_tp_cd === '01'){
+                        alert('세스코 유형은 고객 선택이 불가능합니다.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.cst_id.trim() === ''){
+                        alert('소속 회사를 선택해 주세요.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.user_dept_nm.trim() === '' && _this.accUserInfo.cst_tp_cd != '03'){
+                        alert('소속 부서를 입력해 주세요.');
+                        return false;
+                    }                    
+
+                    // 이메일 중복 체크
+                    if(!_this.chkCusEmail){
+                        alert('이메일 중복 체크를 확인해 주세요.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.user_nm.trim() === ''){
+                        alert('사용자명을 입력해 주세요.');
+                        return false;
+                    }
+
+                    if(_this.accUserInfo.mphone_no.trim() === ''){
+                        alert('휴대전화번호를 입력해 주세요.');
+                        return false;
+                    }
+
+                    // 숫자만 10~11자리
+                    var regExp = /[0-9]{10,11}$/;
+                    if(!regExp.test(_this.accUserInfo.mphone_no)){
+                        alert('휴대전화번호는 숫자만 입력 가능 합니다.(10~11자리)');
+                        _this.accUserInfo.mphone_no = _this.accUserInfo.mphone_no.replaceAll('-','');
+                        return false;
+                    }
+
+                    let url = '/acc/api/insUserInfo';
+                    let msg = '등록';
+                    let method = "post";
+
+                    if(_this.chkUpt){
+                        url = '/acc/api/uptUserInfo';
+                        msg = '수정';
+                        method = "put";
+
+                        if(_this.accUserInfo.status === 'N' && _this.accUserInfo.consult_cnt > 0){
+                            alert('참여중인 컨설팅이 있어 미사용 전환이 불가능 합니다.');
+                            return false;
+                        }
+
+                    }
+
+                    if(confirm("계정 정보를 " + msg + " 하시겠습니까?")){
+
+                        axiosCall(method, url, _this.accUserInfo, function(response) {                            
+                            alert(response.data);
+                            _this.insCusInfo();
+                            _this.drawGrid();
+                        });
+
+                    }
+                    
+                },                
+
+                // 계정 비밀번호 초기화
+                resetCusPass: function(){
+
+                    let _this = this;
+
+                    if(_this.accUserInfo.user_id.trim() === ''){
+                        alert('계정을 선택해 주세요');
+                        return false;;
+                    }
+
+                    if(confirm( "[ "+ _this.accUserInfo.email + " ] 계정의 비밀번호 초기화를 하시겠습니까?")){
+
+                        axiosCall('put', '/acc/api/resetPassword', { user_id : _this.accUserInfo.user_id}, function(response) {                            
+                            alert(response.data);
+                            _this.drawGrid();
+                        });
+
+                    }
+
+                },
+
+                // 계정 삭제[미사용]
+                delCusInfo: async function(){
+
+                    let _this = this;
+
+                    if(_this.accUserInfo.user_id.trim() === ''){
+                        alert('계정을 선택해 주세요');
+                        return false;;
+                    }
+
+                    if(_this.accUserInfo.status === 'N'){
+                        alert('이미 삭제된 계정 입니다.');
+                        return;
+                    };
+
+                    if(confirm( "[ "+ _this.accUserInfo.user_id + " ] 계정을 삭제 하시겠습니까?")){                      
+
+                        let consult_cnt = _this.accUserInfo.consult_cnt;
+
+                        const responseCnt = await axios.get('/acc/api/getConsultCnt?user_id=' + _this.accUserInfo.user_id).catch(function(error){
+                            alert(error.response.data.message);
+                            return false;
+                        });
+
+                        consult_cnt = responseCnt.data;
+
+                        if(consult_cnt > 0) { 
+
+                            alert('참여 중인 컨설팅이 있어 삭제 할 수 없습니다.');
+                            return false;
+
+                        }else{
+                            
+                            axiosCall('delete', '/acc/api/delUserInfo', { user_id : _this.accUserInfo.user_id }, function(response) {
+                                alert(response.data);
+                                _this.drawGrid();
+                            });
+
+                        }
+
+                    }
+
+                },
+
+                // 고객사 목록(get)
+                drawGrid: function() {
+
+                    let _this = this;
+
+                    _this.insCusInfo();
+
+                    // 코드 목록 가져오기
+                    axiosCall('get', '/acc/api/accUserList', _this.accSearch, function(response) {
+
+                        let commCodeAdapter = []
+
+                        let cusTypeListSource = {
+                            datatype: "array",
+                            datafields: [
+                                { name: 'cmm_dtl_cd', type: 'string' },
+                                { name: 'cmm_dtl_nm', type: 'string' }
+                            ],
+                            localdata: _this.cusSearchTypeList
+                        };
+
+                        commCodeAdapter.push(new $.jqx.dataAdapter(cusTypeListSource, {autoBind: true}));   // [0] : 사용자구분
+
+                        _this.useStateList = [
+                            { value : "Y", label : "사용"},
+                            { value : "N", label : "미사용"}
+                        ];
+
+                        _this.useAgreeList = [
+                            { value : "Y", label : "수신"},
+                            { value : "N", label : "미수신"}
+                        ]
+
+                        let commCodeSource = {
+                            datatype: "array",
+                            datafields: [
+                                { name: 'label', type: 'string' },
+                                { name: 'value', type: 'string' }
+                            ],
+                            localdata: _this.useStateList
+                        };
+                        
+                        commCodeAdapter.push(new $.jqx.dataAdapter(commCodeSource, {autoBind: true}));                        
+
+                        let data = response.data;
+                        
+                        // 데이터 타입, 필드, 셋팅할 데이터를 설정한다.  
+                        let source =  {  
+                            datatype: "json", // json 형태의 데이터를 셋팅할 것이고.  
+
+                            // 각필드의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+                            datafields: [
+                                { name : 'user_id',         type : 'string'},       // 사용자ID
+                                { name : 'user_nm',         type : 'string'},       // 사용자명
+                                { name : 'cst_id',          type : 'string'},       // 회사코드
+                                { name : 'cst_nm',          type : 'string'},       // 회사명
+                                { name : 'user_tp_cd',      type : 'string'},       // 사용자구분
+                                { name : 'user_ref_id',     type : 'string'},       // 사용자연결코드
+                                { name : 'email',           type : 'string'},       // 이메일
+                                { name : 'tel_no',          type : 'string'},       // 전화번호
+                                { name : 'mphone_no',       type : 'string'},       // 핸드폰
+                                { name : 'fax_no',          type : 'string'},       // 팩스
+                                { name : 'cst_tp_cd',       type : 'string'},       // 고객구분
+                                { name : 'user_posit_nm',   type : 'string'},       // 직위명
+                                { name : 'user_dept_nm',    type : 'string'},       // 부서명
+                                { name : 'user_dept_nm_view',    type : 'string'},       // 부서명
+                                { name : 'status',          type : 'string'},       // 상태
+                                { name : 'rgstr_dt',        type : 'string'},       // 등록일
+                                { name : 'rgstr_nm',        type : 'string'},       // 등록자
+                                { name : 'rgstr_id',        type : 'string'},       // 등록ID
+                                { name : 'mdfr_dt',         type : 'string'},       // 수정일
+                                { name : 'mdfr_nm',         type : 'string'},       // 수정자
+                                { name : 'mdfr_id',         type : 'string'},       // 수정ID
+                                { name : 'consult_cnt',     type : 'string'},       // 참여컨설팅
+                                { name : 'notice1_yn',      type : 'string'},       // 신규의뢰시 알림
+                                { name : 'notice2_yn',      type : 'string'},       // 멘션 알림
+                                { name : 'notice3_yn',      type : 'string'},       // 참여컨설팅 알림
+                                { name : 'notice4_yn',      type : 'string'},       // 견젹서 및 입금확인 알림
+
+                                // 공통 코드 관련 추가
+                                { name: 'cst_tp_cd_view', value: 'cst_tp_cd', values: { source: commCodeAdapter[0].records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },
+                                { name: 'use_view', value: 'status', values: { source: commCodeAdapter[1].records, value: 'value', name: 'label' } }
+                            ],                            
+
+                            localdata: data // 위에서 셋팅해놓은 data를 localdata에 담아준다.  
+                        };
+
+                        let dataAdapter = new $.jqx.dataAdapter(source);
+
+                        $('#jqxGrid').jqxGrid('clearselection');
+
+                        $("#jqxGrid").jqxGrid({                             
+                            width               :   '100%',
+                            autoheight          :   true,
+		                    autorowheight		:	true,
+                            source              :   dataAdapter,
+                            selectionmode       :   'singlerow',
+                            pageable			:   true,
+                            pagermode			:   'simple',
+                            pagesize			:   15,
+                            pagerbuttonscount	:   10,
+                            columns: [
+                                    {
+                                        text: '순번', sortable: false, filterable: false, editable: false,
+                                        groupable: false, draggable: false, resizable: false,
+                                        datafield: '', columntype: 'number', width: '5%',
+                                        cellsrenderer: function (row, column, value) {
+                                            return "<div style='margin-top:10px;'>" + (value + 1) + "</div>";
+                                        }
+                                    },
+                                    {
+                                        text: '유형', cellsalign: 'center', align : 'center', datafield: 'cst_tp_cd', displayfield: 'cst_tp_cd_view', width: '10%', columntype: 'combobox',
+                                        createeditor: function (row, value, editor) {
+                                            editor.jqxComboBox({ source: commCodeAdapter[0], displayMember: 'cmm_dtl_nm', valueMember: 'cmm_dtl_cd' });
+                                        }
+                                    },
+                                    { text : '이메일',              cellsalign: 'center', align : 'center', datafield : 'email',          width : '15%'},
+                                    { text : '사용자명',            cellsalign: 'center', align : 'center', datafield : 'user_nm',          width : '16%'},
+                                    { text : '회사코드',            cellsalign: 'center', align : 'center', datafield : 'cst_id',           width : '15%'},
+                                    { text : '회사명',              cellsalign: 'center', align : 'center', datafield : 'cst_nm',           width : '15%'},                                    
+                                    { text : '참여컨설팅',          cellsalign: 'center', align : 'center',  datafield : 'consult_cnt',     width : '13%'},                                    
+                                    // { text: '상태',                 cellsalign: 'center', align : 'center', datafield: 'status',            width: '11%'},
+                                    { text: '상태', cellsalign: 'center', align : 'center', datafield: 'status', displayfield: 'use_view', width: '11%', columntype: 'combobox',
+                                        createeditor: function (row, value, editor) {
+                                            editor.jqxComboBox({ source: commCodeAdapter[1], displayMember: 'label', valueMember: 'value' });
+                                         }
+                                    }
+
+                            ]
+                        });
+
+                        // 셀 클릭 이벤트
+                        $("#jqxGrid").off('cellclick').on('cellclick', function (event) {
+                            // event arguments.
+                            var args = event.args;
+                            // row's data.
+                            var rowData = args.row.bounddata;
+                            // column data field.
+                            var dataField = event.args.datafield;
+
+                            // 유저 정보 수정
+                            _this.accUserInfo.user_id           = rowData.user_id;
+                            _this.accUserInfo.user_nm           = rowData.user_nm;
+                            _this.accUserInfo.cst_id            = rowData.cst_id;
+                            _this.accUserInfo.cst_nm            = rowData.cst_nm;
+                            _this.accUserInfo.user_tp_cd        = rowData.user_tp_cd;
+                            _this.accUserInfo.user_ref_id       = rowData.user_ref_id;
+                            _this.accUserInfo.email             = rowData.email;
+                            _this.accUserInfo.mphone_no         = rowData.mphone_no;
+                            _this.accUserInfo.cst_tp_cd         = rowData.cst_tp_cd;
+                            _this.accUserInfo.user_posit_nm     = rowData.user_posit_nm;
+                            _this.accUserInfo.user_dept_nm      = rowData.user_dept_nm;
+                            _this.accUserInfo.user_dept_nm_view = rowData.user_dept_nm_view;
+                            _this.accUserInfo.status            = rowData.status;
+                            _this.accUserInfo.rgstr_dt          = rowData.rgstr_dt;
+                            _this.accUserInfo.rgstr_nm          = rowData.rgstr_nm;
+                            _this.accUserInfo.rgstr_id          = rowData.rgstr_id;
+                            _this.accUserInfo.mdfr_dt           = rowData.mdfr_dt;
+                            _this.accUserInfo.mdfr_nm           = rowData.mdfr_nm;
+                            _this.accUserInfo.mdfr_id           = rowData.mdfr_id;
+                            _this.accUserInfo.consult_cnt       = rowData.consult_cnt;
+                            _this.accUserInfo.notice1_yn        = rowData.notice1_yn;
+                            _this.accUserInfo.notice2_yn        = rowData.notice2_yn;
+                            _this.accUserInfo.notice3_yn        = rowData.notice3_yn;
+                            _this.accUserInfo.notice4_yn        = rowData.notice4_yn;
+                            
+                            _this.chkCusEmail = true;
+                            _this.chkUpt = true;
+
+                        });
+
+                    });
+                },
+
+                onChangeStartDate: function(val) {
+				this.accSearch.start_date = val;
+                },
+
+                onChangeEndDate: function(val) {
+                    this.accSearch.end_date = val;
+                },
+
+                setPeriod: function(e,val) {
+                    let _this = this;
+                    $('.but-tiem').removeClass('mini-btns-togger')
+                    e.target.setAttribute('class','but-tiem mini-btns-togger')
+                    var periodDate = getPeriod(val);
+                    _this.accSearch.start_date = periodDate.startDt;
+                    _this.accSearch.end_date = periodDate.endDt;
+                }        
+            }
+        });
+    });
+</script>
+</head>
+<body>
+    
+    <section layout:fragment="content" id="app" v-cloak>
+        <div class="page-content">
+            <div class="page-box">
+                <div class="clear">
+                    <h2 class="page-title fl">계정 관리</h2>
+                    <div class="fr">
+                        <button class="btn-search" @click="drawGrid"><i></i>조회</button>
+                    </div>
+                </div>
+                <hr>
+                <div class="board-search mgt20">
+                    <table>
+                        <colgroup>
+                            <col width="80px"><col width=""><col width="80px"><col width="">
+                            <col width="80px"><col width=""><col width="80px"><col width="">
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th>고객사유형</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>                                            
+                                            <select class="full" v-model="accSearch.cst_tp_cd">
+                                                <option :key="index" v-for="(item, index) in cusSearchTypeList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+                                            </select>     
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </td>
+                                <th>소속회사</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accSearch.cst_id" ref="custSel">
+                                                <option value="">전체</option>
+                                                <option :key="index" v-for="(item, index) in compList" :value="item.cst_id">{{item.cst_nm}}</option>
+                                            </select>     
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </td>
+                                <th>참여중</th>
+                                <td>
+                                    <select class="full" v-model="accSearch.consult_cnt">
+                                        <option value="0">전체</option>
+                                        <option value="1">참여중</option>
+                                        <option value="2">비참여</option>
+                                    </select>
+                                </td>
+                                <th>상태</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accSearch.status">
+                                                <option value="">전체</option>
+                                                <option :key="index" v-for="(item, index) in useStateList" :value="item.value">{{item.label}}</option>
+                                            </select>     
+                                        </div>
+                                        <div></div>
+                                    </div>
+                                </td>                                
+                            </tr>
+                            <tr>                                
+                                <th>사용자명</th>
+                                <td><input type="text" v-model="accSearch.user_nm" class="full" placeholder="사용자명을 입력하세요." @keyup.enter="drawGrid"></td>
+                                <th>아이디</th>
+                                <td><input type="text" v-model="accSearch.user_id" class="full" placeholder="아이디를 입력하세요." @keyup.enter="drawGrid"></td>                                
+                                <th></th>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="page-box clear">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">계정목록</h3></div>
+                    <div class="fr">
+                        <button class="btn-save" @click="insCusInfo">신규</button>
+                        <button class="btn-save" @click="setCusInfo" v-if="chkUpt === false">등록</button>
+                        <button class="btn-save" @click="setCusInfo" v-if="chkUpt === true">수정</button>
+                        <button class="btn-save" @click="resetCusPass">비밀번호 초기화</button>                        
+                    </div>
+                </div>
+                <div class="column col2 pdr10">
+                    <div id="jqxGrid">&nbsp;</div>
+                </div>
+                <div class="column col2 pdl10">
+                    <table class="tb-view-01">
+                        <colgroup><col width="150px"><col width=""></colgroup>
+                        <tbody>
+                            <tr>
+                                <th>고객사유형</th>
+                                <td>
+                                    <select class="full" v-model="accUserInfo.cst_tp_cd" v-on:change="onChgCstTpCd">                                        
+                                        <option :key="index" v-for="(item, index) in cusTypeList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>사용자유형</th>
+                                <td>
+                                    <select class="full" v-model="accUserInfo.user_tp_cd">
+                                        <option :key="index" v-for="(item, index) in userTypeList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                            </tr>  
+                            <tr>
+                                <th>이메일</th>
+                                <td>
+                                    <div class="flex-auto-end">                                        
+                                        <div><input type="text" v-model="accUserInfo.email" :readonly="chkCusEmail" maxlength="80" ref="user_id" class="full" placeholder="이메일을 입력하세요"></div>
+                                        <div><button class="btn-tb mgl5" v-if="chkCusEmail === false" @click="onCheckCusEmail">중복 체크</button></div>
+                                        <div><button class="btn-tb mgl5" v-if="chkCusEmail === true" @click="onReCusEmail">재입력</button></div>
+                                    </div>
+                                </td>
+                            </tr>                          
+                            <tr>
+                                <th>소속회사</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.cst_id" @click="chkConsult" v-if="accUserInfo.cst_tp_cd != '03'">
+                                                <option value="">선택</option>
+                                                <option :key="index" v-for="(item, index) in compList" :value="item.cst_id">{{item.cst_nm}}</option>
+                                            </select>
+                                            <input type="text" v-model="accUserInfo.cst_nm" maxlength="50" class="full" v-if="accUserInfo.cst_tp_cd == '03'" readonly>                           
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>소속부서명</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <input type="text" v-model="accUserInfo.user_dept_nm" maxlength="50" class="full" placeholder="소속부서명을 입력하세요" v-if="accUserInfo.cst_tp_cd != '03'">
+                                            <span v-if="accUserInfo.cst_tp_cd == '03'">{{accUserInfo.user_dept_nm_view}}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>사용자명</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div><input type="text" v-model="accUserInfo.user_nm"  maxlength="25" class="full" placeholder="사용자명을 입력하세요"></div>                                        
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>휴대전화번호</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div><input type="text" v-model="accUserInfo.mphone_no"  maxlength="11" class="full" placeholder="휴대전화번호를 입력하세요"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>신규의뢰시 알림</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.notice1_yn">
+                                                <option :key="index" v-for="(item, index) in useAgreeList" :value="item.value">{{item.label}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>멘션 알림</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.notice2_yn">
+                                                <option :key="index" v-for="(item, index) in useAgreeList" :value="item.value">{{item.label}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>참여컨설팅 알림</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.notice3_yn">
+                                                <option :key="index" v-for="(item, index) in useAgreeList" :value="item.value">{{item.label}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>견젹서 및 입금확인 알림</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.notice4_yn">
+                                                <option :key="index" v-for="(item, index) in useAgreeList" :value="item.value">{{item.label}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>상태</th>
+                                <td>
+                                    <div class="flex-auto-end">
+                                        <div>
+                                            <select class="full" v-model="accUserInfo.status">
+                                                <option :key="index" v-for="(item, index) in useStateList" :value="item.value">{{item.label}}</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>등록자</th>
+                                <td><input type="text" v-model="accUserInfo.rgstr_nm" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>등록일시</th>
+                                <td><input type="text" v-model="accUserInfo.rgstr_dt" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>수정자</th>
+                                <td><input type="text" v-model="accUserInfo.mdfr_nm" class="full" readonly></td>
+                            </tr>
+                            <tr>
+                                <th>수정일시</th>
+                                <td><input type="text" v-model="accUserInfo.mdfr_dt" class="full" readonly></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

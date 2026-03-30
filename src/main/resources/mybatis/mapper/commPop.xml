@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.sys.comm.mapper.CommPopupMapper">
+
+    <!-- 공통팝업 고객사 검색 -->
+    <select id="getCustomerListForPop" resultType="com.cesco.co.cusMgt.dto.CusInfoDTO" parameterType="com.cesco.sys.comm.dto.CommPopReqDTO">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_CommPop_CustomerList] (
+            #{srch_cst_nm}
+        )}
+    </select>
+
+    <!-- 공통팝업 담당자 검색 -->
+    <select id="getUserListForPop" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.CommPopReqDTO">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_CommPop_UserList] (
+            #{srch_user_nm}, #{srch_cst_nm}, #{p_type}
+        )}
+    </select>
+
+</mapper>

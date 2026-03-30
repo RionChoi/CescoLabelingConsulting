@@ -1,0 +1,67 @@
+.jqx-grid {border-top: 1px solid #0052d9;}
+.jqx-rc-all, .jqx-rc-all-arctic {
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+}
+.jqx-widget-header, .jqx-widget-header-arctic {
+    text-shadow: none;
+   	background-color:#f6faff; 
+   	background:#f6faff;
+	background:-webkit-gradient(linear, 0 0, 100% 100%, from(#f6faff), to(#f6faff));
+	background:-moz-linear-gradient(100% 100% 90deg, #f6faff, #f6faff);
+	background:-ms-linear-gradient(top, #f6faff 100%,#f6faff 100%);
+	background:linear-gradient(top, #f6faff 100%,#f6faff 100%);
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+}
+.jqx-grid-pager-number {
+    position: relative;
+    top: 1px;
+}
+.jqx-listitem-state-selected-arctic, .jqx-menu-item-selected-arctic, .jqx-tree-item-selected-arctic, .jqx-calendar-cell-selected-arctic, .jqx-grid-cell-selected-arctic, .jqx-menu-vertical-arctic .jqx-menu-item-top-selected-arctic, .jqx-grid-selectionarea-arctic, .jqx-input-button-header-arctic, .jqx-input-button-innerHeader-arctic, .jqx-fill-state-pressed {
+    background-color: #e5f1ff;
+    border-color: #ccc #ccc #ccc !important;
+    background: #e5f1ff;
+    color: #000 !important;
+    text-shadow: none;
+}
+.jqx-button-arctic, .jqx-fill-state-normal-arctic {
+    background: #fff;
+    background: -webkit-gradient(linear, 0 0, 100% 100%, from(#fff), to(#fff));
+    background: -moz-linear-gradient(100% 100% 90deg, #fff, #fff);
+    background: -ms-linear-gradient(top, #fff 0%,#fff 100%);
+    background: linear-gradient(top, #fff 0%,#fff 100%);
+}
+.jqx-grid-cell-hover {
+    background:#f8f8f8;
+    color:inherit !important;
+    border-color:#ccc !important;
+}
+.jqx-grid-pager,
+.jqx-grid-pager .jqx-fill-state-normal {
+    background-color:#fff;
+}
+.jqx-grid-pager-number.jqx-fill-state-pressed {
+    background: #fff;
+    box-shadow: none;
+    -webkit-box-shadow: none;
+}
+.jqx-grid-pager-number.jqx-fill-state-hover {
+    background:#0052d9;
+    color:#fff !important;
+}
+.jqx-fill-state-hover-arctic {
+    text-shadow:none;
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+}
+.jqx-widget .jqx-grid-cell, .jqx-widget .jqx-grid-column-header, .jqx-widget .jqx-grid-group-cell {
+    border: none;
+}
+
+/* grid 내부 custom */
+.jqx-grid .col-consultant,
+.jqx-grid .a-link {margin-left:4px;margin-right:4px;}

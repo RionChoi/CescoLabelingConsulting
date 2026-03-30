@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.fs.serviceStatement.mapper.ServiceStatementMapper">
+    <!-- 서비스 견적서 목록 -->
+    <select id="getServiceStmtList" resultType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementMgtDto">
+        { CALL [dbo].[Usp_Fs_Get_Bill_Mst_List] (#{p_type}, #{sys_id}, #{start_date}, #{end_date}, #{cst_id}, #{fs_bill_no}, #{bill_req_cd}, #{fs_mng_id}, #{bill_ar_cd}, #{cont_id}, #{user_id}) }
+    </select>
+
+    <!-- 서비스 견적서 상세 목록 -->
+    <select id="getServiceStmtDtlList" resultType="com.cesco.fs.serviceStatement.dto.ServiceStatementDtlDto" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementMgtDto">
+        { CALL [dbo].[Usp_Fs_Get_Bill_Dtl_List] (#{p_type}, #{sys_id}, #{fs_bill_no}) }
+    </select>
+
+    <!-- 서비스 견적서 정보 -->
+    <select id="getServiceStmtInfo" resultType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto">
+        { CALL [dbo].[Usp_Fs_Get_Bill_Info] (#{p_type}, #{sys_id}, #{fs_bill_no}, #{fs_bill_seq}) }
+    </select>
+
+    <!-- 서비스 견적서 비고 수정 -->
+    <update id="setServiceStmtRemark" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto">
+        UPDATE [dbo].TB_FS_BILL
+           SET SSMM        = #{ssmm}
+             , MDFR_ID     = #{mdfr_id}
+             , MDFR_DT     = GETDATE()
+         WHERE STATUS      = 'Y'
+           AND SYS_ID  = #{sys_id}
+           AND FS_BILL_NO  = #{fs_bill_no}
+           AND FS_BILL_SEQ = #{fs_bill_seq}
+    </update>
+
+    <!-- 서비스 견적서 삭제(status = 'N') -->
+    <update id="setDelServiceStmtList" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto">
+        UPDATE [dbo].TB_FS_BILL
+           SET STATUS      = 'N'
+             , MDFR_ID     = #{mdfr_id}
+             , MDFR_DT     = GETDATE()
+         WHERE STATUS      = 'Y'
+           AND SYS_ID  = #{sys_id}
+           AND FS_BILL_NO  = #{fs_bill_no}
+           AND FS_BILL_SEQ = #{fs_bill_seq}
+    </update>
+
+    <!-- 단가내역(견적금액내역)에 청구여부 (fs_bill_yn = 'N') -->
+    <update id="setModiCalculateBillYn" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto">
+        UPDATE [dbo].TB_FS_ESTMATE
+           SET FS_BILL_YN    = 'N'
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+		  FROM [dbo].TB_FS_ESTMATE A
+		 INNER JOIN [dbo].TB_FS_BILL B
+			ON A.SYS_ID      = B.SYS_ID
+		   AND A.FS_BILL_NO  = B.FS_BILL_NO
+		 WHERE A.SYS_ID      = #{sys_id} 
+           AND A.FS_BILL_NO  = #{fs_bill_no}
+    </update>
+
+    <!-- 서비스견적서 고객확인요청 -->
+    <update id="setModiServiceStmtBillReq" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementDto">
+        UPDATE [dbo].TB_FS_BILL
+           SET BILL_REQ_CD = #{bill_req_cd}
+           <choose>
+            <when test="bill_req_cd.equals('02')">
+             , BILL_REQ_DATE = GETDATE()
+            </when>
+            <when test="bill_req_cd.equals('03')">
+             , BILL_REP_DATE = GETDATE()
+            </when>
+            <when test="bill_req_cd.equals('04')">
+             , BILL_MDIFY_NOTE = #{bill_mdify_note}
+             , BILL_MDIFY_DATE = GETDATE()
+            </when>
+           </choose>
+             , MDFR_ID     = #{mdfr_id}
+             , MDFR_DT     = GETDATE()
+         WHERE STATUS      = 'Y'
+           AND SYS_ID  = #{sys_id}
+           AND FS_BILL_NO  = #{fs_bill_no}
+           AND FS_BILL_SEQ = #{fs_bill_seq}
+    </update>
+
+    <!-- 세금계산서발행요청 -->
+    <update id="setTaxBillReq" parameterType="com.cesco.fs.serviceStatement.dto.ServiceStatementMgtDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Set_ORDER_INSERT] (
+            #{sys_id}, #{fs_bill_no}, #{cont_id}
+        )}
+    </update>
+
+</mapper>
+
+ 

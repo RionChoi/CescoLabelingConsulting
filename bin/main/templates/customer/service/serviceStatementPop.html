@@ -1,0 +1,220 @@
+<script th:inline="javascript" type="text/javascript">
+    var serviceStmtPopVue
+    $(document).ready(function(){
+        serviceStmtPopVue = new Vue({
+            el: '#serviceStatementPop',
+            data: {
+                eformDir: [[${eformDir}]],
+                eformLoc : [[${eformLoc}]],
+                modiReq: false,
+                serviceStmtData: [[${serviceStmtData}]],
+                serviceStmtDtlList: [],
+				directEmail: '',
+            },
+            methods: {
+				closePopup: function() {
+					closeCmmPopup('serviceStatementPop');
+				},
+				changeModiText: function() {
+					this.modiReq = this.modiReq ? false : true;
+				},
+                // 서비스견적서 상세 목록
+				getServiceStmtDtlList: function() {
+					let _this = this;
+					let url = '/api/service/getServiceStmtDtlList';
+					let param = {
+						fs_bill_no: _this.serviceStmtData.fs_bill_no
+					};
+
+					axiosCall('get', url, param, function(res){
+						_this.serviceStmtDtlList = res.data;
+						_this.drawReportForm();
+					});
+				},
+				// 서비스견적서 확정
+				setServiceStmtConfirm: function() {
+					let _this = this;
+					let url = '/api/service/setServiceStmtConfirm';
+					let param = {
+						fs_bill_no: _this.serviceStmtData.fs_bill_no,
+						fs_bill_seq: _this.serviceStmtData.fs_bill_seq
+					};
+
+					axiosCall('post', url, param, function(res){
+						alert("확정되었습니다.");
+						_this.closePopup();
+						vue.getServiceStmtList();
+					});
+				},
+				// 서비스견적서 수정요청
+				setServiceStmtReq: function() {
+					let _this = this;
+					let url = '/api/service/setServiceStmtReq';
+					let param = {
+						fs_bill_no: _this.serviceStmtData.fs_bill_no,
+						fs_bill_seq: _this.serviceStmtData.fs_bill_seq,
+						bill_mdify_note: _this.serviceStmtData.bill_mdify_note
+					};
+
+					axiosCall('post', url, param, function(res){
+						alert("수정요청되었습니다.");
+						_this.closePopup();
+						vue.getServiceStmtList();
+					});
+				},
+				// direct Email 전송
+				sendDirectEmail: function() {
+					let _this = this;
+					// var frameObj = document.getElementById('eformView');
+					// var frameContent = frameObj.ownerDocument.body.innerHTML;
+
+					let url = '/api/service/sendDirectEmail';
+					let param = {
+						fs_bill_no: _this.serviceStmtData.fs_bill_no,
+						fs_bill_seq: _this.serviceStmtData.fs_bill_seq,
+						directEmail: _this.directEmail,
+						// emailContent: frameContent,
+					};
+
+					axiosCall('post', url, param, function(res){
+						alert("수정요청되었습니다.");
+						_this.closePopup();
+						vue.getServiceStmtList();
+					});
+				},
+				// 레포트 iframe에 jsp그리기 => jsp:report에 데이터 넘기고 세팅하는 곳(권한없음, 수정시 요청해야함.)
+				drawReportForm: function() {
+					let _this = this;
+					let _content0 = [{
+						title     : _this.serviceStmtData.fs_bill_nm,
+						price     : Number(_this.serviceStmtData.supply_amt).toLocaleString() + "원 (VAT 별도)",
+						detail    : "1) 표시검토 의뢰건수/청구비용 : " + _this.serviceStmtData.est_cnt + "건 / " 
+						        	+ Number(_this.serviceStmtData.supply_amt).toLocaleString() + "원",
+						note      : _this.serviceStmtData.ssmm       
+					}];
+					let _content1 = _this.serviceStmtDtlList;
+
+					// form
+					var form = document.createElement('form');
+						form.target = 'eformView';
+						form.method = 'POST';
+						form.style.display = 'none';
+						form.action = _this.eformLoc + '/eform_bill.jsp';
+					
+					// input : content0
+					var input0 = document.createElement('input');
+						input0.type = 'hidden';
+						input0.name = 'content0';
+						input0.value = '{\"content0\":' + JSON.stringify(_content0) + '}';
+
+					// input : content1
+					var input1 = document.createElement('input');
+						input1.type = 'hidden';
+						input1.name = 'content1';
+						input1.value = '{\"content1\":' + JSON.stringify(_this.serviceStmtDtlList) + '}';
+
+					// input : fileNm
+					var fileNm = document.createElement('input');
+						fileNm.type = 'hidden';
+						fileNm.name = 'fileNm';
+						fileNm.value = 'Bill_' + _this.serviceStmtData.fs_bill_no;
+					
+					// input : eformDir
+					var eformDir = document.createElement('input');
+						eformDir.type = 'hidden';
+						eformDir.name = 'eformDir';
+						eformDir.value = _this.eformDir;
+					
+					form.appendChild(input0);                        
+					form.appendChild(input1);
+					form.appendChild(fileNm);
+					form.appendChild(eformDir);
+
+					document.body.appendChild(form);
+					form.submit();
+
+					// var form = $('<form></form>');
+					// form.attr("target","eformView");
+					// form.attr("method","POST");
+					// form.attr("style","display:none");
+					// form.attr("action", _this.eformLoc + '/eform_bill.jsp');
+
+					// form.append($('<input/>', {type: 'hidden', name: 'content0', value:'{\"content0\":' + JSON.stringify(_content0) + '}' }));
+					// form.append($('<input/>', {type: 'hidden', name: 'content1', value:'{\"content1\":' + JSON.stringify(_content1) + '}' }));
+					// form.append($('<input/>', {type: 'hidden', name: 'fileNm', value:'Bill_' + _this.serviceStmtData.fs_bill_no }));
+					// form.append($('<input/>', {type: 'hidden', name: 'eformDir', value:_this.eformDir }));
+					
+					// form.appendTo('body');
+					// form.submit();
+				},
+            },
+            mounted() {
+				console.log("here");
+				this.getServiceStmtDtlList();
+            },
+        })
+    });
+</script>
+<section layout:fragment="content" id="serviceStatementPop" v-cloak>
+	<div class="page-head">
+		<div class="layer-pop-wrap">
+			<div class="layer-pop-box large">
+				<div class="pop-wrap">
+					<h1 class="blind">{{serviceStmtData.fs_bill_nm}}</h1>
+					<header class="pop-header">
+						<div class="pop-header-title-wrap">
+							<h3 class="pop-header-title">{{serviceStmtData.fs_bill_nm}}</h3>
+							<button class="btn-pop-close js-pop-close" @click="closePopup">닫기</button>
+						</div>
+					</header>
+					<div class="pop-container">
+                        <div class="pop-common-box">
+                            <div class="service-detailed">
+                                <div class="e-form-box">
+                                    <div class="e-form-content">
+										<div class="board-search bg mgb10">
+											<table>
+												<colgroup>
+													<col width="80px"><col width="25%"><col width="80px"><col width="25%"><col width="">
+												</colgroup>
+												<tbody>
+													<tr>
+														<th>이메일</th>
+														<td><input type="text" class="full" v-model="directEmail"></td>
+														<th></th>
+														<td></td>
+														<td class="txt-r">
+															<a href="#" class="btn-report-mail tooltip" @click="sendDirectEmail"><span class="tooltip-txt">메일 전송</span></a>
+														</td>
+													</tr>
+												</tbody>
+											</table>
+										</div>
+										<div v-if="serviceStmtData.bill_req_cd != '03'" class="service-memo mgb10">
+											<button :class="'btn-save btn-service-edit' + (modiReq ? ' on' : '')" @click="changeModiText">
+												수정요청 입력하기<i class="ico-arrow"></i>
+											</button><!--클릭시 입력란 show / 버튼에 on 클래스 추가(btn-save btn-service-edit on)-->
+											<div class="clear mgt10 service-edit-box" :style="(modiReq ? 'display:block;' : 'display:none;')">
+												<textarea maxlength="2000" cols="30" rows="3" class="full" v-model="serviceStmtData.bill_mdify_note"></textarea>
+											</div>
+										</div>
+										<div class="tb-list">
+                                        	<iframe name="eformView" id="eformView" 
+												:style="'width:100%; border:1px solid;' + (serviceStmtData.bill_req_cd != '03' ? 'height:500px;' : 'height:600px;')">
+											</iframe>
+                                        </div> 
+										<div v-if="serviceStmtData.bill_req_cd != '03'" class="pop-bottom">
+											<div class="pop-btn-box">
+												<a href="#" class="btn-pop-bottom" @click="(modiReq ? setServiceStmtReq() : setServiceStmtConfirm())">서비스견적서 {{(modiReq ? '수정요청' : '확정')}}</a>
+											</div>
+										</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>	

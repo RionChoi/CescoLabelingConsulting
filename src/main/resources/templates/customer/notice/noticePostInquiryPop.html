@@ -1,0 +1,79 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#appPop',
+		data: {
+
+		},
+		methods: {
+
+			popClose : function(){
+                $("#popDiv").hide();
+            }
+			
+		}
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="appPop"  v-cloak>
+		<div class="page-head">
+			<div class="layer-pop-wrap">
+				<div class="layer-pop-box midium">
+					<div class="pop-wrap">
+						<h1 class="blind">공지사항 > 게시글 조회 현황</h1>
+						<header class="pop-header">
+							<div class="pop-header-title-wrap">
+								<h3 class="pop-header-title">게시글 조회 현황</h3>
+								<button class="btn-pop-close js-pop-close" @click="popClose">닫기</button>
+							</div>
+						</header>
+						<div class="pop-container">
+							<div class="pop-common-box">
+								<div class="tb-list mgt20">
+									<ul class="thead">
+										<li>
+											<div style="width:8%;">No</div>
+											<div>고객사</div>
+											<div style="width:15%;">유저명</div>
+											<div style="width:20%;">아이디</div>
+											<div style="width:30%;">조회일시</div>
+										</li>
+									</ul>
+									<ul class="tbody">
+										<li>
+											<div style="width:8%;">1</div>
+											<div class="txt-l">세스코</div>
+											<div style="width:15%;">담당자1</div>
+											<div style="width:20%;">cesco</div>
+											<div style="width:30%;">2022.03.01 23:00:23</div>
+										</li>
+										<li>
+											<div style="width:8%;">2</div>
+											<div class="txt-l">CJ진천공장</div>
+											<div style="width:15%;">김고객</div>
+											<div style="width:20%;">CJ제일제당</div>
+											<div style="width:30%;">2022.03.01 23:00:23</div>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>	    
+</div>
+</body>
+</html>

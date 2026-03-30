@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.sys.comm.mapper.CommMapper">
+    <!-- 사용자 조회 -->
+    <select id="getUser" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.UserReqDTO">
+        { CALL Usp_Fs_Get_Comm_User_Info (#{user_id}, #{pwd}) }
+    </select>
+    <!-- 사용자 조회 이메일-->
+    <select id="getUsersMail" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.UserReqDTO">
+        { CALL Usp_Fs_Get_Comm_User_Info_mail (#{email})}
+    </select>
+    <!-- 사용자 조회 phone-->
+    <select id="getUsersPhone" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.UserReqDTO">
+        SELECT 
+             USER_ID         
+            ,USER_NM         
+            ,CST_ID          
+            ,CST_NM          
+            ,USER_TP_CD       
+            ,USER_REF_ID     
+            ,PWD             
+            ,PWD_CHG_DT      
+            ,EMAIL           
+            ,TEL_NO          
+            ,MPHONE_NO       
+            ,FAX_NO          
+            ,ZIP_CD          
+            ,BAS_ADDR        
+            ,DTL_ADDR        
+            ,CST_TP_CD       
+            ,USER_POSIT_NM   
+            ,USER_DEPT_NM    
+            ,STATUS          
+            ,RGSTR_DT
+            ,RGSTR_ID	     
+            ,MDFR_DT
+            ,MDFR_ID			 
+            ,SYS_ID	 	 
+            ,PWD_INIT_YN 	 
+        FROM TB_FS_USER
+        WHERE TEL_NO = #{tel_no}
+    </select>
+
+    <!-- 로그인 이력 조회 -->
+    <select id="getUserHis" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.UserReqDTO">
+        { CALL Usp_Fs_Get_Comm_User_His (#{email})}
+    </select>
+    <!-- 사용자 조회 이름 / 폰 -->
+    <select id="findUserId" resultType="com.cesco.sys.comm.dto.UserDTO" parameterType="com.cesco.sys.comm.dto.UserReqDTO">
+        { CALL Usp_Fs_Get_Comm_User_Info_find (#{user_nm},#{tel_no}) }
+    </select>
+
+    <!-- 로그인 이력 추가 -->
+    <insert id="saveLoginHis" parameterType="com.cesco.sys.comm.dto.UserDTO">
+        { CALL Usp_Fs_Set_Comm_User_His (#{user_id},#{pwd},#{cst_nm},#{user_tp_cd},#{email},#{tel_no},#{status},#{user_nm})}
+    </insert>
+
+    <!-- 비밀번호 신규 변경 -->
+    <insert id="loginForgotPwEnter" parameterType="com.cesco.sys.comm.dto.ChangePasswdParam">
+        { CALL Usp_Fs_Set_Comm_User_InitPass (#{email}, #{pwd})}
+    </insert>
+
+    <!-- 비밀번호 변경 -->
+    <insert id="changePass" parameterType="com.cesco.sys.comm.dto.ChangePasswdParam">
+        { CALL Usp_Fs_Set_Comm_User_ChangePass (#{email},#{passwd1})}
+    </insert>
+
+    <!-- 파일 업로드 -->
+    <select id="saveUspFsSetAttach" parameterType="com.cesco.sys.comm.dto.ConsultingAttach" resultType="string">
+        { CALL Usp_Fs_Set_Attach (#{sys_id},#{fs_no},#{atch_nm},#{atch_size},#{url},#{org_file_nm},#{ser_file_nm},#{rgstr_id})}
+    </select>
+
+    <!-- 공통 코드 조회 -->
+    <select id="getCommDtlCode" parameterType="com.cesco.sys.comm.dto.CommCodeDTO" resultType="com.cesco.sys.comm.dto.CommDtlCodeDTO">
+        { CALL Usp_Fs_Get_Comm_Dtl_CodeList (#{sys_cd}, #{cmm_cd} ,#{cmm_type})}
+    </select>
+
+    <!-- 고객사 combo box resultMap -->
+    <resultMap id="comboCstMap" type="com.cesco.sys.comm.dto.CommDtlCodeDTO">
+        <result column="CST_ID" property="cmm_dtl_cd" jdbcType="VARCHAR" javaType="String"/>
+        <result column="CST_NM" property="cmm_dtl_nm" jdbcType="VARCHAR" javaType="String"/>
+    </resultMap>
+
+    <!-- 고객사 combo box 조회 -->
+    <select id="getComboCstList" parameterType="com.cesco.sys.comm.dto.CommCodeDTO" resultMap="comboCstMap">
+        { CALL Usp_Fs_Get_Combo_Cst_List (#{p_type}, #{p_parm1}, #{p_parm2}, #{p_parm3}, #{p_parm4}, #{p_parm5})}
+    </select>
+
+    <!-- 관리자 combo box resultMap -->
+    <resultMap id="comboMngMap" type="com.cesco.sys.comm.dto.CommDtlCodeDTO">
+        <result column="USER_ID" property="cmm_dtl_cd" jdbcType="VARCHAR" javaType="String"/>
+        <result column="USER_NM" property="cmm_dtl_nm" jdbcType="VARCHAR" javaType="String"/>
+    </resultMap>
+
+    <!-- 관리자 combo box 조회 -->
+    <select id="getComboMngList" parameterType="com.cesco.sys.comm.dto.CommCodeDTO" resultMap="comboMngMap">
+        { CALL Usp_Fs_Get_Combo_Mng_List (#{p_type}, #{p_parm1}, #{p_parm2}, #{p_parm3}, #{p_parm4}, #{p_parm5})}
+    </select>
+
+    <!-- 부서 combo box resultMap -->
+    <resultMap id="comboDeptMap" type="com.cesco.sys.comm.dto.CommDtlCodeDTO">
+        <result column="DEPT_CD" property="cmm_dtl_cd" jdbcType="VARCHAR" javaType="String"/>
+        <result column="DEPT_NM" property="cmm_dtl_nm" jdbcType="VARCHAR" javaType="String"/>
+    </resultMap>
+
+    <!-- 부서 combo box 조회 -->
+    <select id="getComboDeptList" parameterType="com.cesco.sys.comm.dto.CommCodeDTO" resultMap="comboDeptMap">
+        { CALL Usp_Fs_Get_Combo_Dept_List (#{p_type}, #{p_parm1}, #{p_parm2}, #{p_parm3}, #{p_parm4})}
+    </select>
+    <!-- 멘션 안내 메일 저장-->
+    <insert id="saveEmail" parameterType="com.cesco.sys.comm.dto.MailDto">
+        { CALL Usp_Fs_Set_Comm_Email (
+             #{user_id}
+            ,#{sys_id}  
+            ,#{send_tp_cd}  
+            ,#{send_nm}   
+            ,#{receive_nm}  
+            ,#{receive_email}   
+            ,#{receive_tel_no}  
+            ,#{send_url}  
+            ,#{send_text}   
+            ,#{status}  
+            ,#{cst_nm}  
+            ,#{prod_nm}
+            ,#{send_chat_st_nm}
+        )}
+    </insert>
+    <!-- 휴대폰 인증 번호 발송-->
+    <insert id="uspFsSetCommCellPhone" parameterType="com.cesco.sys.comm.dto.SendPhoneDto">
+        { CALL Usp_Fs_Set_Comm_Cell_Phone (
+             #{send_id}          
+            ,#{msg_type}     
+            ,#{dest_phone} 
+            ,#{send_phone}   
+            ,#{msg_body}  
+            ,#{subject} 
+        )}
+    </insert>
+
+    <!-- 세션 알림정보 변경 -->
+    <update id="setUserChangeNoti" parameterType="com.cesco.sys.comm.dto.UserDTO">
+        { CALL Usp_Fs_Set_Comm_User_ChangeNoti (#{user_id}, #{notice1_yn}, #{notice2_yn} , #{notice3_yn} , #{notice4_yn})}
+    </update>
+
+</mapper>

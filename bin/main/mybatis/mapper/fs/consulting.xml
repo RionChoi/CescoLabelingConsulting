@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.fs.consulting.mapper.ConsultingMapper">
+
+  <!-- <parameterMap type="map" id="procParam">
+      <parameter property="SYS_ID"  jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+      <parameter property="FS_NO"  jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+      <parameter property="FS_FILE_TYPE"  jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+      <parameter property="FS_CHAT_ID"  jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+      <parameter property="FS_INTEREST_YN"  jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+      <parameter property="CNT" jdbcType="INTEGER" javaType="int"             mode="IN"/>
+      <parameter property="CNT" jdbcType="INTEGER" javaType="int"             mode="OUT"/>
+  </parameterMap>
+
+
+	<resultMap type="com.cesco.fs.consulting.dto.ConsUspFsGetChatAtchListAllDto" id="rslt" autoMapping="true">
+		<result property="cnt"				column="CNT"				javaType="java.lang.Integer" />
+	</resultMap> -->
+
+
+    <!-- 컨설팅 목록 조회 -->
+    <select id="getList" parameterType="com.cesco.fs.consulting.dto.ConsultingReqDto" resultType="com.cesco.fs.consulting.dto.ConsultingResDto">
+      { CALL Usp_Fs_Get_CoslMgtList (
+         #{p_type},#{sys_id} 
+        ,#{customer} 
+        ,#{rgstr_id} 
+        ,#{food_type} 
+        ,#{product_name} 
+        ,#{manager} 
+        ,#{cesco_person_in_charge} 
+        ,#{start_date} 
+        ,#{end_date}
+        ,#{fs_status_cd})}
+    </select>
+
+    <!-- 컨설팅 담당자 조회 -->
+    <select id="getMngInfo" parameterType="com.cesco.fs.consulting.dto.ConsultingReqDto" resultType="com.cesco.fs.consulting.dto.ConsultingMngDto">
+      { CALL Usp_Fs_Get_Mng_Info (#{p_type},#{sys_id} ,#{manager})}
+    </select>
+
+     <!-- 컨설팅 의뢰내역삭제(취소) -->
+    <update id="deleteMst"  parameterType="com.cesco.fs.consulting.dto.ConsultingNewReq">
+      { CALL [dbo].[Usp_Fs_Del_Mst] (#{p_type},#{fs_no}) }
+    </update>
+
+    <!-- 컨설팅 의뢰 신규 -->
+    <select id="saveConsultingNew" parameterType="com.cesco.fs.consulting.dto.ConsultingNewReq" resultType="int">
+      { CALL Usp_Fs_Set_New_Consulting_Req(
+         #{sys_id}
+        ,#{fs_no},#{cst_id}
+        ,#{prod_nm}
+        ,#{prod_tp_cd}
+        ,#{prod_tp_cust_nm}
+        ,#{prod_mafa_nm}
+        ,#{user_id}
+        ,#{prod_item})}
+    </select>
+
+    <!-- 컨설팅 체팅 글 목록 -->
+    <select id="uspFsGetChatDtLList"  parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.fs.consulting.dto.ConsUspFsGetChatDtLListDto">
+      { CALL [dbo].[Usp_Fs_Get_Chat_DtL_List] (#{sys_id},#{fs_no},#{fs_seq}) }
+    </select>
+
+    <!-- 컨설팅 체팅 글 추가 -->
+    <select id="uspFsSetChatDtLList"  parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="int">
+      { CALL [dbo].[Usp_Fs_Set_Chat_DtL_List] (
+        #{sys_id}
+        ,#{fs_no}
+        ,#{fs_chat_id}
+        ,#{fs_status_cd}
+        ,#{contents}
+        ,#{status}
+        ,#{fs_chat_ref_seq}
+        ,#{read_yn})}
+    </select>
+
+    <!-- 컨설팅 체팅 파일 목록 -->
+    <select id="uspFsGetChatAtchList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.fs.consulting.dto.ConsUspFsGetChatAtchListDto">
+      <!-- { CALL [dbo].[Usp_Fs_Get_Chat_Atch_List] (#{sys_id},#{fs_no},"%","%","%")} -->
+      { CALL [dbo].[Usp_Fs_Get_Chat_Atch_List] (#{sys_id},#{fs_no},#{fs_file_type},#{fs_chat_id},#{fs_interest_yn},#{cnt})}
+      <!-- { CALL [dbo].[Usp_Fs_Get_Chat_Atch_List] (?,?,?,?,?,?)} -->
+    </select>
+
+    <!-- 컨설팅 체팅 방 멤버 조회-->
+    <select id="uspFsGetChatMemAddList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.fs.consulting.dto.ConsUspFsGetChatMemAddListDto">
+      { CALL [dbo].[Usp_Fs_Get_Chat_Mem_List] (#{p_type},#{sys_id},#{fs_no},#{fs_chat_nm})}
+    </select>
+
+    <!-- 컨설팅 진행 상태 조회 -->
+    <select id="uspFsGetChatStatusList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.fs.consulting.dto.ConsUspFsGetChatStatusListDto">
+      { CALL [dbo].[Usp_Fs_Get_Chat_Status_List] (#{sys_id},#{fs_no} ,#{fs_seq})} 
+    </select>
+
+    <!-- 컨설팅 체팅 방 멤버 추가-->
+    <select id="uspFsSetChatMem" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="int">
+      { CALL [dbo].[Usp_Fs_Set_Chat_Mem] (#{sys_id},#{fs_no},#{fs_chat_id},#{fs_chat_yn},#{fs_chat_yn_pre}) }
+    </select>
+    
+
+    <!-- 컨설팅 체팅 방 구성원 삭제 TODO....-->
+    <select id="uspFsDelChatMem" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="int">
+      { CALL [dbo].[Usp_Fs_Del_Chat_Mem] ('1') }
+    </select>
+
+    <!-- 파일 업로드 -->
+    <insert id="saveUspFsSetAttachChat" parameterType="com.cesco.fs.consulting.dto.ConsultingAttachChatDto">
+      <!-- <![CDATA[   -->
+      { CALL Usp_Fs_Set_Attach_Chat (
+        #{sys_id}
+        ,#{fs_no}
+        ,#{fs_chat_id}
+        ,#{fs_chat_seq}
+        ,#{atch_nm}
+        ,#{atch_size}
+        ,#{url}
+        ,#{org_file_nm}
+        ,#{ser_file_nm}
+        ,#{rgstr_id}
+        ,#{interest_yn})}
+      <!-- ]]> -->
+    </insert>
+
+    <!-- 다운로드 파일 정보-->
+    <select id="getAttachDownloadInfo" resultType="com.cesco.sys.comm.dto.ConsultingAttach" >    
+      SELECT ORG_FILE_NM, URL, ATCH_SIZE,SER_FILE_NM FROM TB_FS_DTL_ATTACH WHERE SER_FILE_NM = #{ser_file_nm} 
+    </select>
+
+    <!-- 컨설팅 체팅 진행상태 변경 -->
+    <update id="modifyFsStatusCd"  parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto">
+      { CALL [dbo].[Usp_Fs_Set_Chat_Status_Cd] (#{sys_id},#{fs_no},#{fs_chat_seq},#{fs_status_cd}) }
+    </update>
+
+</mapper>

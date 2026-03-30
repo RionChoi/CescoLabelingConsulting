@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<link rel="stylesheet" href="../../../static/css/import.css"/>
+<script type="text/javascript" src="../../../static/js/jquery-1.10.1.min.js"></script>
+<script type="text/javascript" src="../../../static/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="../../../static/js/common.js"></script>
+</head>
+<body>
+<div class="wrap">
+	<div class="wrapInner">
+		<header id="header" class="header">
+            <div class="header-inner">
+                <div class="header-main">
+                    <h1 class="logo">
+                        <a href="#"><span>표시컨설팅</span></a>
+                    </h1>
+                </div>
+                <nav id="nav" class="header-nav">
+                    <ul class="nav-1depth">
+                        <li><a href="#"><span class="txt">고객사관리</span></a></li>
+                        <li class="is-opened"><a href="#"><span class="txt">협력사관리</span></a></li>
+                        <li><a href="#"><span class="txt">컨설팅관리</span></a></li>
+                        <li><a href="#"><span class="txt">계정관리</span></a></li>
+                        <li><a href="#"><span class="txt">코드관리</span></a></li>
+                    </ul>
+                </nav>
+                <div class="utility">
+                    <div class="profile-layer" id="utilityProfile">
+                        <ul class="profile-menu">
+                            <li class="name">
+                                <a href="#"><span>관리자</span><span>김고객</span></a>
+                            </li>
+                            <li class="logout">
+                                <a href="#">로그아웃</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+		</header>
+		
+		<div id="container" class="container">
+			<div id="content" class="content">
+                <!-- content -->
+				<div class="page-content">
+                    <div class="page-box">
+                        <div class="clear">
+                            <h2 class="page-title fl">컨설팅 관리</h2>
+                            <div class="fr">
+                                <button class="btn-search"><i></i>조회</button>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="board-search mgt20">
+                            <table>
+                                <colgroup>
+                                    <col width="80px"><col width="25%"><col width="10%"><col width="">
+                                    <col width="10%"><col width=""><col width="10%"><col width="">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th rowspan="2" class="valign-b th-pd">기간</th>
+                                        <td rowspan="2" class="valign-b">
+                                            <div class="mini-btns">
+                                                <button>당월</button>
+                                                <button>당해</button>
+                                                <button>1개월</button>
+                                                <button>3개월</button>
+                                                <button>6개월</button>
+                                                <button>1년</button>
+                                            </div>
+                                            <div class="calendar-wrap">
+                                                <span class="calendar-box"><input type="text" class="calendarDate_start"></span>
+                                                <span class="dash">~</span>
+                                                <span class="calendar-box"><input name="" type="text" class="calendarDate_end"></span>
+                                            </div>
+                                        </td>
+                                        <th>매출액</th>
+                                        <td>
+                                            <div class="flex-auto-end">
+                                                <div><input type="text" class="full txt-r"></div>
+                                                <div class="mgl5">원</div>
+                                            </div>
+                                        </td>
+                                        <th>수금액</th>
+                                        <td>
+                                            <div class="flex-auto-end">
+                                                <div><input type="text" class="full txt-r"></div>
+                                                <div class="mgl5">원</div>
+                                            </div>
+                                        </td>
+                                        <th>진행단계</th>
+                                        <td><select class="full"><option></option></select></td>
+                                    </tr>
+                                    <tr>
+                                        <th>계약MD</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>수행MD</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>세스코 담당자</th>
+                                        <td><select class="full"><option></option></select></td>
+                                    </tr>
+                                    <tr>
+                                        <th>고객사</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>식품유형</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>상품명</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th>담당자</th>
+                                        <td><select class="full"><option></option></select></td>
+                                    </tr>
+                                    <tr>
+                                        <th>지역본부</th>
+                                        <td><select class="full"><option></option></select></td>
+                                        <th></th>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="page-box">
+                        <div class="clear">
+                            <div class="fl"><h3 class="content-title">컨설팅 목록</h3></div>
+                            <div class="fr">
+                                <button class="btn-save">신규 컨설팅 등록</button>
+                                <button class="btn-save">컨설팅 수정</button>
+                            </div>
+                        </div>
+                        <div>
+                            그리드 영역
+                        </div>
+                    </div>
+				</div>
+				<!-- //content -->
+			</div>
+		</div>
+	</div>
+	
+	<footer id="footer" class="footer">
+		<div class="footer-inner">
+			<div>
+				(주)세스코 서울특별시 강동구 상일로 10길 46 세스코 터치센터(134-090)&nbsp;&nbsp;&nbsp;&nbsp;Tel : 1588-1119&nbsp;&nbsp;&nbsp;&nbsp;
+				대표이사 : 사장 전찬혁&nbsp;&nbsp;&nbsp;&nbsp;사업자등록번호 : 212-81-05946<br>
+				COPYRIGHT(C) BY CESCO CO., LTD. ALL RIGHTS RESERVED.
+				<div class="footer-link-box">
+				    <a href="">개인정보처리방침</a>
+				    <a href="">서비스 이용약관</a>
+				    <a href="">전자금융거래이용약관</a>
+				</div>
+			</div>
+		</div>
+	</footer>
+</div>
+</body>
+</html>

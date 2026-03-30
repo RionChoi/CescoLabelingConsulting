@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.hc.calculate_hc.mapper.CalculateMapper_hc">
+
+
+    <!-- 정산 목록 -->
+    <select id="getCalculateList" resultType="com.cesco.hc.calculate_hc.dto.CalculateDto" parameterType="com.cesco.hc.calculate_hc.dto.CalculateMgtDto">
+        <!-- { CALL [dbo].[Usp_Hc_Get_Calculate_List] (#{p_type}, #{sys_id}, #{start_date}, #{end_date}, #{cst_id}, #{tax_bill_id}, #{fs_bill_yn}) } -->
+        
+        <!-- 정다원 수정-->
+        { CALL [dbo].[Usp_Hc_Get_Calculate_List] (#{p_type}, #{sys_id}, #{start_date}, #{end_date}, #{cst_id}, #{tax_bill_id}, #{fs_bill_yn}, #{fs_status_cd}, #{fs_mng_id}, #{fs_prod_cd}) }
+    </select>
+
+
+    <!-- 정산 상세 목록 -->
+    <select id="getCalculateDtlList" resultType="com.cesco.hc.calculate_hc.dto.CalculateDetailDto" parameterType="com.cesco.hc.calculate_hc.dto.CalculateMgtDto">
+        { CALL [dbo].[Usp_Hc_Get_Calculate_Dtl_List] (#{p_type}, #{sys_id}, #{fs_no}) }
+    </select>
+
+
+
+    <!-- 발행요청 -->
+    <insert id="requestPublish" parameterType="com.cesco.hc.calculate_hc.dto.CalculateBillDto">
+        { CALL [dbo].[Usp_Hc_Set_Calculate_Rq_Publish] (#{p_type}, #{sys_id}, #{rgstr_id}, #{bill_cst_id}, #{tax_bill_id}, #{tax_email}, #{tax_bill_tp_cd}, #{tax_bill_cnt}, #{fs_no}, #{fs_seq}, #{est_seq}, #{est_tp_cd}) }
+    </insert>
+
+
+
+    <!-- 발행 -->
+    <update id="publish" parameterType="com.cesco.hc.calculate_hc.dto.CalculateBillDto">
+        { CALL [dbo].[Usp_Hc_Set_Calculate_Publish] (#{p_type}, #{sys_id}, #{rgstr_id}, #{fs_bill_no}, #{fs_no} }
+    </update>
+
+</mapper>

@@ -1,0 +1,147 @@
+<meta charset="UTF-8"/>
+<header layout:fragment="header" id="header" class="header">
+    <script th:inline="javascript" th:fragment="headerScript" type="text/javascript">
+        var headerVue
+        $(document).ready(function(){
+            headerVue = new Vue({
+                el: '#headerVue',
+                data: {
+                    userId:[[${session.userId}]],
+                    userNm: [[${session.userNm}]],
+                    userTpCd: [[${session.userTpCd}]],
+                    dept:[[${session.dept}]],
+                    deptCode: [[${session.deptCode}]],
+                    sysCode:[[${session.sysCode}]],
+                    notice1Yn:[[${session.notice1Yn}]],
+                    notice2Yn:[[${session.notice2Yn}]],
+                    notice3Yn:[[${session.notice3Yn}]],
+                    notice4Yn:[[${session.notice4Yn}]],
+
+                    menuTitle   : window.location.href.split('/')[4],
+                    menuBase    : window.location.href.split('/')[3],
+                    notiList    : [],
+                },
+                methods : {
+                    checkActive: function(url){
+                        let path = window.location.pathname;
+                        if(path.indexOf(url) == 0){
+                            return 'is-opened'
+                        }
+                    },
+                    ckSession: function() { // 세션 체크
+                        let _self = this;
+                        if (!!!_self.userId) {
+                            location.href = "/user/login"
+                        }
+                    },
+                    // 알림여부 session 데이터 변경
+                    setUserChangeNoti: function(e) {
+                        let url = '/api/setUserChangeNoti';
+                        let _this = this;
+                        var input = e.target;
+                        _this[input.id] = input.checked == true ? 'Y' : 'N';
+
+                        let param = {};
+                        param.notice1_yn = _this.notice1Yn;
+                        param.notice2_yn = _this.notice2Yn;
+                        param.notice3_yn = _this.notice3Yn;
+                        param.notice4_yn = _this.notice4Yn;
+
+                        axiosCall('post', url, param, function(res){
+                            console.log("변경완료");
+                        });
+                    }
+                },
+				mounted() {
+                    console.log("menuTitle:",this.menuTitle);
+                    console.log("menuBase:",this.menuBase);
+                    this.ckSession(); // 조회
+
+                    let _this = this;
+                    getCodeListForArrNm([{cmm_cd: 'FS027', arr_nm: 'notiList'}], _this, selectBoxToggle('noti')); // 알림 toggle
+                },
+            });
+        });
+    </script>
+<div class="header-inner" id="headerVue">
+    <div id="divPop"></div>
+    <div class="header-main">
+        <h1 class="logo">
+            <a href="/main" v-if="(userTpCd =='01' || userTpCd =='02') && sysCode != 'FS'">
+                <span>HACCP 컨설팅</span>                
+            </a>
+            <a href="/fs/main" v-if="(userTpCd =='01' || userTpCd =='02') && sysCode == 'FS'">                
+                <span>표시컨설팅</span>
+            </a>
+            <a href="/notice/noticeList" v-if="userTpCd =='03'">                
+                <span>HACCP 컨설팅</span>
+            </a>
+        </h1>
+    </div>
+    <nav class="header-nav">
+        <!-- 표시컨설팅 메뉴 -->
+        <ul class="nav-1depth" v-if="sysCode == 'FS'">
+            <li :class="{'is-opened' : menuTitle === 'consult' }" v-if="userTpCd !='03'"><a href="/consulting/consult/indicationCoslList"><span class="txt">표시컨설팅</span></a></li>
+            
+            <li :class="{'is-opened' : menuBase === 'calculate' }" v-if="userTpCd =='02'"><a href="/calculate/calculateList"><span class="txt">정산대상</span></a></li>
+            <li :class="{'is-opened' : menuBase === 'service' }" v-if="userTpCd !='03'"><a href="/service/serviceStatementList"><span class="txt">서비스견적서</span></a></li>
+            
+            <li :class="{'is-opened' : menuTitle === 'consult' }" v-if="userTpCd =='03'"><a href="/comm/consult/coslMgtList"><span class="txt">컨설팅관리</span></a></li>
+            <li :class="{'is-opened' : menuTitle === 'customer' }" v-if="userTpCd =='03'"><a href="/comm/customer/cusMgtList"><span class="txt">고객사관리</span></a></li>
+            <li :class="{'is-opened' : menuTitle === 'account' }" v-if="userTpCd =='03'"><a href="/comm/account/AcctMgtCusAcctList"><span class="txt">계정관리</span></a></li>
+            <li :class="{'is-opened' : menuTitle === 'code' }" v-if="userTpCd =='03'"><a href="/comm/code/codeMgtList"><span class="txt">코드관리</span></a></li>
+
+            <li :class="{'is-opened' : menuBase === 'notice' }"><a href="/notice/noticeList"><span class="txt">공지사항</span></a></li>
+        </ul>
+    </nav>
+    <nav class="header-nav" v-if="sysCode != 'FS'">
+        <!-- HACCP컨설팅 -->
+        <ul class="nav-1depth">
+            
+            <li :class="{'is-opened' : menuTitle === 'consult' }" ><a href="/consulting/consult/hcConsultList"><span class="txt">컨설팅</span></a></li>
+            <li :class="{'is-opened' : menuBase === 'calculate' }" ><a href="/calculate/settlementList"><span class="txt">정산</span></a></li>
+            
+            <li :class="{'is-opened' : menuTitle === 'customer' }" v-if="userTpCd !='01'"><a href="/comm/customer/cusMgtList"><span class="txt">고객사관리</span></a></li>
+            <li :class="{'is-opened' : menuTitle === 'account' }"  v-if="userTpCd !='01'"><a href="/comm/account/AcctMgtCusAcctList"><span class="txt">계정관리</span></a></li>
+            <li :class="{'is-opened' : menuTitle === 'consultMgt' }" v-if="userTpCd !='01'"><a href="/hc/consultMgt/coslMgtList"><span class="txt">컨설팅관리</span></a></li>
+
+            <li :class="{'is-opened' : menuTitle === 'code' }" v-if="userTpCd =='03'"><a href="/comm/code/codeMgtList"><span class="txt">코드관리</span></a></li>
+            
+            <li :class="{'is-opened' : menuBase === 'notice' }" ><a href="/notice/noticeList"><span class="txt">공지사항</span></a></li>            
+        </ul>
+    </nav>
+
+    <div class="utility">
+        <div class="profile-layer" id="utilityProfile">
+            <ul class="profile-menu noti">
+                <li class="name">
+                    <a href="#"><span>{{dept}}</span><span>{{userNm}}</span></a>
+                    <ul class="list-select">
+                        <li v-for="(item, index) in notiList">
+                            <span>{{item.cmm_dtl_nm}}</span>
+                            <input class="noti-check-input" type="checkbox" :id="item.etc_cd1" v-model="$data[item.etc_cd1]" true-value="Y" false-value="N" @click="setUserChangeNoti" hidden> 
+                            <label :for="item.etc_cd1" class="toggleSwitch">
+                                <span class="toggleButton"></span>
+                            </label>
+                        </li>
+                    </ul>
+                </li>
+                <li class="logout">
+                    <a href="/user/logout">로그아웃</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+<style>
+    .noti .list-select {width: 230px; max-height:200px;padding:10px 0;overflow:auto;text-align:left;content:'';position:absolute;right:0;top:52px;border-top:none;-webkit-box-sizing:border-box;box-sizing:border-box;z-index:111;display:none;background:#f6f6f6;border-radius:5px;}
+    .noti .list-select li {margin-left: 0px; padding: 5px 10px 5px 15px;}
+    .noti .list-select li .toggleSwitch { display: inline-block; width: 40px; height: 20px; position: relative; border-radius: 30px; background-color: #fff; box-shadow: 0 0 16px 3px rgba(0 0 0 / 15%); cursor: pointer; }
+    .noti .list-select li .toggleSwitch .toggleButton { padding:0px; width: 15px; height: 15px; position: absolute; top: 50%; left: 4px; transform: translateY(-50%); border-radius: 50%; background: #eaeaea; }
+    .noti .list-select li span {width: 150px; display: inline-block; vertical-align: middle; font-size:13px; font-weight:400;color:#999;overflow:hidden;text-overflow:ellipsis;}
+    .noti.on .list-select {display:block;}
+    .noti .list-select li .noti-check-input:checked ~ .toggleSwitch {background: #0052d9;}
+    .noti .list-select li .noti-check-input:checked ~ .toggleSwitch .toggleButton {left: calc(100% - 20px);background: #fff;}
+    .noti .list-select li .toggleSwitch, .toggleButton { transition: all 0.2s ease-in;}
+</style>
+</header>

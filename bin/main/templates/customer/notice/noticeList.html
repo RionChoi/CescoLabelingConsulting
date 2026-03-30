@@ -1,0 +1,809 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#app',
+		data: {
+			userTpCd: [[${session.userTpCd}]],
+			open: false,			// 등록, 수정 팝업
+			openRead: false,		// 조회 팝업
+			type: '',				// 등록, 수정 type
+			sysId: '',              // 등록, 수정, 조회현황
+			notiSeq: '',			// 수정 noti seq
+			startDate: '',			// 조회 시작일자
+			endDate: '',			// 조회 종료일자
+			notiTitle: '',			// 조회 공지제목
+			srchCodeParam : [
+                {
+                    cmm_cd: 'FS011',
+                    arr_nm: 'fs011List'
+                },
+			],
+			fs011List: [],
+			noticeList: [],			// 공지사항 list
+			delNoticeList: [],		// 공지사항 삭제 list
+			cmpltNoticeList: [],	// 공지사항 게시종료 list
+		},
+		methods: {
+			onChangeClose: function(val) {
+				this.open = val;
+			},
+			onChangeOpen: function(val, type) {
+				// 수정
+				if(type == 'edit') {
+					// 체크된 데이터
+					let checkedData = [];
+					let selectedRowIndexes = $("#noticeGrid").jqxGrid('getselectedrowindexes');
+
+					// 선택 확인.
+					if(selectedRowIndexes.length > 0) {
+						$.each(selectedRowIndexes, function(i, v) {
+							checkedData.push($('#noticeGrid').jqxGrid('getrowdata', v))
+						})
+					}
+
+					// 선택 확인.
+					if(checkedData.length == 1) {
+						this.open = val;
+						this.type = type;
+						this.notiSeq = checkedData[0].noti_seq;
+						this.sysId = checkedData[0].sys_id;
+
+					} else if(checkedData.length > 1) {
+						alert("수정은 단일 체크 시에 만 가능합니다.")
+						return false;
+
+					} else if(checkedData.length == 0) {
+						alert("체크박스가 선택되지 않았습니다.")
+						return false;
+					}
+
+				// 신규
+				} else {
+					this.open = val;
+					this.type = type;
+					this.notiSeq = '';
+				}
+
+            },
+			onChangeReadClose: function(val) {
+				this.openRead = val;
+			},
+			onChangeReadOpen: function(val, param) {
+				this.openRead = val;
+				this.sysId = param.sys_id
+				this.notiSeq = param.noti_seq
+			},
+			onChangeStartDate: function(val) {
+				this.startDate = val;
+			},
+			onChangeEndDate: function(val) {
+				this.endDate = val;
+			},
+			setPeriod: function(val) {
+				var periodDate = getPeriod(val);
+				this.startDate = periodDate.startDt;
+				this.endDate = periodDate.endDt;
+			},
+			// get 공지사항 목록
+			getNoticeList : function() {
+				let url = '/api/notice/getNoticeList';
+				let _this = this;
+				let msg = '';
+				let param = {};
+				param.srch_start_date = _this.startDate.replaceAll('-', '');
+				param.srch_end_date = _this.endDate.replaceAll('-', '');
+				param.srch_noti_title = _this.notiTitle;
+
+				axiosCall('get', url, param, function(res){
+					_this.noticeList = res.data;
+					_this.drawTable();
+				}, msg);
+			},
+			// jqxgrid 생성 및 bind
+			drawTable : function() {
+				let _this = this;
+
+				// 공지사항
+				var notiSource = {  
+					datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+					datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+						{ name: 'type_nm', type: 'string', value:'type_cd', values: { source: _this.fs011List.records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },         // 상태
+						{ name: 'noti_title', type: 'string' },      // 제목
+						{ name: 'assign_id', type: 'string' },       // 게시자
+						{ name: 'assign_nm', type: 'string' },       // 게시자명
+						{ name: 'read_cnt', type: 'string' },        // 조회수
+						{ name: 'start_date', type: 'string' },      // 작성일
+						{ name: 'complete_date', type: 'string' },   // 마감일
+						{ name: 'type_cd', type: 'string' },         // 상태
+						{ name: 'sys_id', type: 'string' },          // 시스템id
+						{ name: 'noti_seq', type: 'string' },        // 공지seq
+					],  
+					localdata: _this.noticeList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+					pagenum: 0,
+					pagesize: 10,
+					pager: function (pagenum, pagesize, oldpagenum) {
+						// callback called when a page or page size is changed.
+					}
+				};
+				
+				var notiDataAdapter = new $.jqx.dataAdapter(notiSource);  
+
+				$("#noticeGrid").jqxGrid({  
+					width: '100%',
+					// height: '400',
+					autoheight: true, //높이설정(자동)
+					source: notiDataAdapter,    //위에서 만든 dataAdapter
+					sortable: true,
+					filterable: true,
+					columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+					pageable: true,
+					pagermode: 'simple',
+					showrowlines: false,
+                    showcolumnlines: false,
+					selectionmode: 'checkbox',
+					// ready: function() {
+					// 	$("#noticeGrid").find('.jqx-grid-column-header:first').children().hide();
+					// },
+					columns: [                  // 각 컬럼값들의 대한 설정이다.
+						{
+							text: 'No', sortable: false, filterable: false, editable: false,
+							groupable: false, draggable: false, resizable: false,
+							datafield: '', columntype: 'number', width: 50, align:'center',
+							cellsrenderer: function (row, column, value) {
+								return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+							}
+						},
+						{ 
+							text: '상태', datafield: 'type_cd', displayfield: 'type_nm', width: 120, align:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var typeClass = rowdata.type_cd == '01' ? 'tag notice' : '';
+								var typeMargin = rowdata.type_cd == '01' ? '5px' : '8px';
+								return "<div style='text-align: center; margin-top: "+ typeMargin +";'><span class='"+ typeClass +"'>"+ value +"</span></div>";
+							},
+							// comboBox
+							// text: '상태', datafield: 'type_cd', displayfield: 'type_nm', width: 120, align:'center', columntype: 'combobox',
+							// createeditor: function (row, value, editor) {
+							//     editor.jqxComboBox({ source: _this.fs011List, displayMember: 'cmm_dtl_nm', valueMember: 'cmm_dtl_cd' });
+							// },
+						},  
+						{ 
+							text: '제목', datafield: 'noti_title', align:'left',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq, noti_no:rowdata.boundindex+1};
+								var html = "<div class='txt-l' style='margin-top:8px;'>"
+										 + "<a href='#none' class='a-link' onClick='vue.movePage(\"1\", "+ JSON.stringify(param) +")'>"+ value +"</a>"
+										 + "</div>"
+								return html;
+							},
+
+						},  
+						{ text: '게시자', datafield: 'assign_nm', width: 120, align:'center', cellsalign:'center' },  
+						{ 
+							text: '조회', datafield: 'read_cnt', width: 80, align:'center', cellsalign:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq};
+								var html = "<div style='text-align: center; margin-top:8px;'>"
+										 + "<a href='#none' class='a-link' onClick='vue.onChangeReadOpen(true, "+ JSON.stringify(param) +")'>"+ value +"</a>"
+										 + "</div>"
+								return html; 
+							},
+						},  
+						{ text: '게시일', datafield: 'start_date', width: 120, align:'center', cellsalign:'center' },
+						{ 
+							text: '게시종료일', datafield: 'complete_date', width: 120, align:'center', cellsalign:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: center; margin-top: 8px;'>"+ (value == '99991231' ? '영구' : value) +"</div>";
+							},
+						},
+					]  
+				});
+
+				// pagechanging
+				$("#noticeGrid").on('pagechanging', function (event) {
+					let pageInfo = event.args;
+
+					// 이전 페이지(oldpagenum) checkbox 해제
+					let oldFirstIdx = (pageInfo.oldpagenum * pageInfo.pagesize);
+					let oldNextFirstIdx = ((pageInfo.oldpagenum + 1) * pageInfo.pagesize);
+					for(var i = oldFirstIdx; i < oldNextFirstIdx; i++) {
+						$("#noticeGrid").jqxGrid('unselectrow', i);
+					}
+            	});
+
+				// 체크박스 전체 해제
+				$("#noticeGrid").jqxGrid('unselectallrows');
+
+			},
+			// 공지사항 삭제
+			setDelNoticeList: function(e) {
+				// 체크된 데이터
+				let _this = this;
+				let checkedData = [];
+				let selectedRowIndexes = $("#noticeGrid").jqxGrid('getselectedrowindexes');
+				let pageInfo = $("#noticeGrid").jqxGrid('getpaginginformation')
+				let preLastIdx = (pageInfo.pagenum * pageInfo.pagesize) - 1;
+				let curLastIdx = ((pageInfo.pagenum + 1) * pageInfo.pagesize) -1;
+
+				// 선택 확인.
+				if(selectedRowIndexes.length > 0) {
+					$.each(selectedRowIndexes, function(i, v) {
+						if(v > preLastIdx && v <= curLastIdx) {
+							checkedData.push($('#noticeGrid').jqxGrid('getrowdata', v))
+						}
+					})
+				}
+
+				_this.delNoticeList = checkedData;
+
+				// 공지사항 삭제 (status = 'N')
+				let url = '/api/notice/setDelNoticeList';
+				let msg = '';
+				let param = {noticeList:_this.delNoticeList};
+
+				axiosCall('post', url, param, function(res){
+					alert('삭제되었습니다.');
+					_this.getNoticeList();
+				}, msg);
+			},
+			// 공지사항 게시종료
+			setCmpltNoticeList: function(e) {
+				// 체크된 데이터
+				let _this = this;
+				let checkedData = [];
+				let selectedRowIndexes = $("#noticeGrid").jqxGrid('getselectedrowindexes');
+				let pageInfo = $("#noticeGrid").jqxGrid('getpaginginformation')
+				let preLastIdx = (pageInfo.pagenum * pageInfo.pagesize) - 1;
+				let curLastIdx = ((pageInfo.pagenum + 1) * pageInfo.pagesize) -1;
+
+				// 선택 확인.
+				if(selectedRowIndexes.length > 0) {
+					$.each(selectedRowIndexes, function(i, v) {
+						if(v > preLastIdx && v <= curLastIdx) {
+							checkedData.push($('#noticeGrid').jqxGrid('getrowdata', v))
+						}
+					})
+				}
+
+				_this.cmpltNoticeList = checkedData;
+
+				// 공지사항 게시종료
+				let url = '/api/notice/setCmpltNoticeList';
+				let msg = '';
+				let param = {noticeList:_this.cmpltNoticeList};
+
+				axiosCall('post', url, param, function(res){
+					alert('게시종료되었습니다.');
+					_this.getNoticeList();
+				}, msg);
+				
+			},
+			// 페이지 이동
+            movePage: function(idx, param) {
+                let url = '';
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+                } else {
+                    alert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                let paramStr = "";
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            }
+		},
+		mounted: function() {
+			let _this = this;
+			getCodeAdapterListForArrNm(_this.srchCodeParam, _this, _this.getNoticeList);
+		}
+	})
+});
+
+// 공지사항 팝업
+Vue.component('noticePop', {
+	template: '#noticePop',
+	props: ['open', 'type', 'sysId', 'notiSeq'],
+	data() {
+		return {
+			noticeInfo:{
+				sys_id: this.sysId,      // 시스템id
+    			noti_seq: this.notiSeq,  // 공지seq
+				type_cd: '',             // 타입코드 01 공지 ''02 일반
+				priority_cd: '',         // 우선순위 순차적부여 01 중요 02 높음 03중간 04낮음
+				noti_title: '',          // 제목
+				noti_contents: '',       // 내용
+				assign_date: '',         // 등록일자
+				start_date: '',          // 시작일자
+				complete_date: '',       // 종료일자
+				assign_id: '',           // 게시자
+				assign_nm: '',           // 게시자명
+				rep_yn: '',              // 답글여부
+				status: '',              // 상태
+				rgstr_id: '',            // 등록자id
+				rgstr_dt: '',            // 등록일자
+				mdfr_id: '',             // 수정자id
+				mdfr_dt: '',             // 수정일자
+				ssmm: '',                // 
+				noti_cmm_yn: '',          // 
+			},
+			fileList: [],
+			noticeAttachList: [],
+			delAttachList: [],
+        }
+	},
+	methods: {
+		closePopup: function(e) {
+			let _this = this;
+
+			// 부모에게 자식 값 전달
+			_this.$emit("on-change-close",false)
+		},
+		onChangeSingleDate: function(val) {
+			this.noticeInfo.complete_date = val;
+		},
+		cmpltDtFormat: function(val) {
+			return (val.length == 8 ? val.replace(/(\d{4})(\d{2})(\d{2})/g, '$1-$2-$3') : val);
+		},
+		// 업로드파일 데이터 array에 push
+		fileUpload: function(e) {
+
+			let _this = this;
+			let fileArr = e.target.files;
+			var maxSize = 5 * 1024 * 1024; 
+
+			$.each(fileArr, function(idx, obj) {
+				// file size 제한
+				if(obj.size > maxSize){
+					alert("첨부파일 사이즈는 5MB 이내로 등록 가능합니다.");
+					e.target.value = '';
+					return false;
+				}
+
+				// 화면에 보여주기 위한 용도
+				var file = {};
+				file.atch_nm = obj.name;
+				file.atch_size = obj.size;
+				file.org_file_nm = obj.name;
+				file.idx = _this.noticeAttachList.length;
+
+				_this.fileList.push(obj);
+				_this.noticeAttachList.push(file);
+			});
+
+			// input value 초기화
+			e.target.value = '';
+
+		},
+		// 파일 삭제
+		deleteFile: function(idx) {
+			let _this = this;
+
+			// 신규파일이 아닌 기존에 저장된 파일이라면 delAttachList에 넣어준다.
+			if(_this.noticeAttachList[idx].atch_seq != '' && _this.noticeAttachList[idx].atch_seq != undefined) {
+				_this.delAttachList.push(_this.noticeAttachList[idx]);
+
+			// 신규파일
+			} else {
+				var cnt = 0;
+				$.each(_this.noticeAttachList, function(i, v) {
+					cnt += (v.atch_seq == '' || v.atch_seq == undefined) ? 0 : 1;
+				})
+				_this.fileList.splice(idx - cnt, 1);
+			}
+
+			// 화면에 보여주기 위한 용도
+			_this.noticeAttachList.splice(idx, 1);
+		},
+		// 공지사항 저장
+		setNoticeInfo: function() {
+			let url = '/api/notice/setNoticeInfo';
+			let _this = this;
+			let msg = '';
+			var formData = new FormData();
+
+			// complete_date '-'제거, 공통공지 N
+			_this.noticeInfo.complete_date = _this.noticeInfo.complete_date.replaceAll('-', '');
+			if(_this.noticeInfo.noti_cmm_yn == '')  _this.noticeInfo.noti_cmm_yn = 'N';
+
+			// form data add
+			formData.append("noticeInfo", new Blob([JSON.stringify(_this.noticeInfo)], {type: "application/json"}));
+			formData.append("delAttachList", new Blob([JSON.stringify(_this.delAttachList)], {type: "application/json"}));
+
+			$.each(_this.fileList, function(i, v) {
+				formData.append('files', v);
+			})
+
+			// 공지사항 저장
+			axiosCall('multi', url, formData, function() {	
+				alert("게시되었습니다.")
+				_this.$parent.getNoticeList();
+				_this.closePopup();
+			});
+		},
+		// get 공지사항 정보
+		getNoticeInfo : function() {
+			let url = '/api/notice/getNoticeInfo';
+			let _this = this;
+			let msg = '';
+			let param = {};
+			param.sys_id = _this.sysId;
+			param.noti_seq = _this.notiSeq;
+
+			axiosCall('get', url, param, function(res){
+				_this.noticeInfo = res.data.noticeDto;
+				_this.noticeAttachList = res.data.noticeAttachList;
+			}, msg);
+		},
+		// 파일 다운로드
+		onDownload: function(filename) {
+			if(filename != undefined && filename != '') {
+				location.href = '/api/filedownload/noti/' + filename;
+			}
+		},
+		setNotiCmmN : function() {
+			if(this.noticeInfo.noti_cmm_yn == '' || this.noticeInfo.noti_cmm_yn == undefined) {
+				this.noticeInfo.noti_cmm_yn = 'N'
+			}
+		}
+	},
+	mounted: function (){
+		// 수정화면의 경우 공지사항 데이터 불러오기
+		if(this.type == 'edit') {
+			this.getNoticeInfo();
+		}
+	},
+});
+
+// 공지사항 게시글 조회 현황
+Vue.component('noticePostInqPop', {
+	template: '#noticePostInqPop',
+	props: ['openRead', 'sysId', 'notiSeq'],
+	data() {
+		return {
+			noticeReadList: [],
+            }
+	},
+	methods: {
+		closeHisPopup(e) {
+			let _this = this;
+
+			// 부모에게 자식 값 전달
+			_this.$emit("on-change-read-close",false)
+		},
+		// 공지사항 게시글 조회 현황 list
+		getNoticeReadList: function() {
+			let url = '/api/notice/getNoticeReadList';
+			let _this = this;
+			let msg = '';
+			let param = {sys_id: this.sysId, noti_seq: this.notiSeq};
+
+			axiosCall('get', url, param, function(res){
+				_this.noticeReadList = res.data;
+				_this.drawTable();
+			}, msg);
+		},
+		drawTable: function() {
+			let _this = this;
+
+			var source = {  
+				datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+				datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+					{ name: 'sys_id', type: 'string' },     // sys id
+					{ name: 'cst_nm', type: 'string' },     // 고객사명
+					{ name: 'read_nm', type: 'string' },    // 조회자명
+					{ name: 'read_id', type: 'string' },    // 조회자id
+					{ name: 'read_dt', type: 'string' },    // 수정일시(등록일시)
+				],  
+				localdata: _this.noticeReadList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+			};
+			
+			var dataAdapter = new $.jqx.dataAdapter(source);  
+			
+			$("#notiReadGrid").jqxGrid({  
+				width: '100%',
+				// height: '250',
+				autoheight: true,
+				source: dataAdapter,        //위에서 만든 dataAdapter
+				sortable: true,
+				filterable: true,
+				columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+				showrowlines: false,
+				showcolumnlines: false,
+				columns: [                  // 각 컬럼값들의 대한 설정이다.
+					{
+						text: 'No', width: 40, sortable: false, filterable: false, editable: false, groupable: false, 
+						draggable: false, resizable: false, datafield: '', columntype: 'number', align:'center',
+						cellsrenderer: function (row, column, value) {
+							return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+						}
+					},
+					{ text: '고객사', datafield: 'cst_nm', align:'center', cellsalign:'center' },  
+					{ text: '유저명', datafield: 'read_nm', align:'center', cellsalign:'center' },  
+					{ text: '아이디', datafield: 'read_id', align:'center', cellsalign:'center' },  
+					{ text: '조회일시', datafield: 'read_dt', width: 160, align:'center', cellsalign:'center' },
+				]  
+			});
+		},
+	},
+	mounted: function (){
+		this.getNoticeReadList();
+	},
+});
+
+// start date
+Vue.component('datePickerFrom', {
+	template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-start-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+// end date
+Vue.component('datePickerTo', {
+	template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-end-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+// date
+Vue.component('datePickerSingle', {
+	template: '<input type="text" class="calendarDateSingle" v-model="val" readonly />',
+	props: ['val'],
+	mounted: function() {
+		drawDatePickerSingle(this, 'on-change-single-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+</script>
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<!-- content -->
+		<div class="page-content">
+			<div class="page-box">
+				<div class="clear">
+					<h2 class="page-title fl">공지사항</h2>
+					<div class="fr">
+						<button class="btn-search" @click="getNoticeList()"><i></i>조회</button>
+					</div>
+				</div>
+				<hr>
+				<div class="board-search mgt20">
+					<table>
+						<colgroup>
+							<col width="60px"><col width="25%"><col width="10%"><col width="">
+						</colgroup>
+						<tbody>
+							<tr>
+								<th rowspan="2" class="valign-b th-pd">기간</th>
+								<td rowspan="2" class="valign-b">
+									<div class="mini-btns">
+										<button @click="setPeriod('currentMonth')">당월</button>
+										<button @click="setPeriod('currentYear')">당해</button>
+										<button @click="setPeriod('oneMonth')">1개월</button>
+										<button @click="setPeriod('threeMonth')">3개월</button>
+										<button @click="setPeriod('sixMonth')">6개월</button>
+										<button @click="setPeriod('oneYear')">1년</button>
+									</div>
+									<div class="calendar-wrap">
+										<span class="calendar-box">
+											<date-picker-from name="startDate" type="text" id="startDate" size="12" title="공지사항 조회 시작일" 
+											:val="startDate" @on-change-start-date="onChangeStartDate"/>
+											<label for="startDate"></label>
+										</span>
+										<span class="dash">~</span>
+										<span class="calendar-box">
+											<date-picker-to name="endDate" type="text" id="endDate" size="12" title="공지사항 조회 종료일" 
+											:val="endDate" @on-change-end-date="onChangeEndDate"/>
+											<label for="endDate"></label>
+										</span>
+									</div>
+								</td>
+								<th></th>
+								<td></td>
+							</tr>
+							<tr>
+								<th>제목</th>
+								<td><input type="text" class="full" name="notiTitle" id="notiTitle" v-model="notiTitle"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="page-box">
+				<div class="clear" v-if="(userTpCd != '01')">
+					<div class="fl"><h3 class="content-title">목록</h3></div>
+					<div class="fr">
+						<button class="btn-save" @click="onChangeOpen(true, 'reg')">공지작성</button>
+						<button class="btn-save" @click="onChangeOpen(true, 'edit')">공지수정</button>
+						<button class="btn-save" @click="setDelNoticeList">공지삭제</button>
+						<button class="btn-save" @click="setCmpltNoticeList">게시종료</button>
+					</div>
+				</div>
+				<div id="noticeGrid">
+				</div>
+			</div>
+		</div>
+		<notice-pop v-if="open" :open="open" :type="type" :sys-id="sysId" :noti-seq="notiSeq" @on-change-close="onChangeClose"></notice-pop>
+		<notice-post-inq-pop v-if="openRead" :open-read="openRead" :sys-id="sysId" :noti-seq="notiSeq" @on-change-read-close="onChangeReadClose"></notice-post-inq-pop>
+		<!-- //content -->
+	</section>
+</body>
+</html>
+
+<template id="noticePop">
+	<div class="layer-pop-wrap" >
+		<div class="layer-pop-box large">
+			<div class="pop-wrap">
+				<h1 class="blind">공지사항 > 공지사항 {{type=='reg'?'등록':'수정'}} 팝업</h1>
+				<header class="pop-header">
+					<div class="pop-header-title-wrap">
+						<h3 class="pop-header-title">공지사항 {{type=='reg'?'등록':'수정'}}</h3>
+						<button class="btn-pop-close js-pop-close" @click="closePopup">닫기</button>
+					</div>
+				</header>
+				<div class="pop-container">
+					<div class="pop-common-box">
+						<div class="mgt30">
+							<table class="tb-view-01">
+								<colgroup><col width="150px"><col width=""></colgroup>
+								<tbody>
+									<tr>
+										<th>설정</th>
+										<td>
+											<div class="flex-auto-front">
+												<div>
+													<label class="check mgr20">
+														<input type="checkbox" v-model="noticeInfo.type_cd" true-value="01" false-value="02">
+														<span class="ico"></span>	
+														<span class="txt">상단 고정게시물</span>
+													</label>
+												</div>
+												<div>
+													<label class="check mgr20">
+														<input type="checkbox" v-model="noticeInfo.noti_cmm_yn" true-value="Y" :false-value="setNotiCmmN()">
+														<span class="ico"></span>	
+														<span class="txt">공통 공지</span>
+													</label>
+												</div>
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<th>제목</th>
+										<td>
+											<div class="flex-auto-front">
+												<div>
+													<input type="text" class="full" placeholder="제목을 입력하세요" v-model="noticeInfo.noti_title">
+												</div>
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<th>게시기간</th>
+										<td>
+											<div class="flex-auto-front">
+												<div>
+													<label class="check mgr20">
+														<input type="checkbox" v-model="noticeInfo.complete_date" true-value="99991231" false-value="" >
+														<span class="ico"></span>
+														<span class="txt">영구</span>
+													</label>
+												</div>
+												<div>
+													<div class="calendar-wrap single">
+														<span class="calendar-box">
+															<date-picker-single name="completeDate" type="text" id="completeDate" size="12" title="게시기간" 
+															v-model="noticeInfo.complete_date" :val="cmpltDtFormat(noticeInfo.complete_date)" 
+															@on-change-single-date="onChangeSingleDate"/>
+															<label for="completeDate"></label>
+														</span>
+													</div>
+												</div>
+											</div>
+										</td>
+									</tr>
+									<tr>
+										<th>파일첨부</th>
+										<td>
+											<div class="file-upload-wrap">
+												<div class="file-upload">
+													<input type="file" id="file_name" name="file_name" class="upload-hidden" @change="fileUpload">
+													<label for="file_name"><i></i>파일 찾아보기</label>
+												</div>
+											</div>
+											<div class="mgt10">
+												<table class="tb-list-mini">
+													<colgroup><col width=""><col width="100px"><col width="60px"></colgroup>
+													<thead>
+														<tr>
+															<th>파일명</th>
+															<th>파일크기</th>
+															<th></th>
+														</tr>
+													</thead>
+													<tbody>
+														<tr v-for="(item, idx) in noticeAttachList">
+															<td><a href="#" @click="onDownload(item.ser_file_nm)" class="a-link-file">{{item.atch_nm}}</a></td>
+															<td class="txt-r" v-text="(item.atch_size/Math.pow(1024,2)).toFixed(2)+'MB'"></td>
+															<td class="txt-c"><a href="#" class="btn-del-mini" @click="deleteFile(idx)">삭제</a></td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<div class="mgt10" style="min-height:500px;">
+							<!-- Editor 영역 -->
+							<textarea cols="30" rows="10" class="full" v-model="noticeInfo.noti_contents"></textarea>
+						</div>
+					</div>
+				</div>
+				<div class="pop-bottom">
+					<div class="pop-btn-box">
+						<a href="#" class="btn-pop-bottom" @click="closePopup">취소</a>
+						<a href="#" class="btn-pop-bottom" @click="setNoticeInfo">게시</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+
+<template id="noticePostInqPop">
+	<div class="layer-pop-wrap">
+		<div class="layer-pop-box midium">
+			<div class="pop-wrap">
+				<h1 class="blind">공지사항 > 게시글 조회 현황</h1>
+				<header class="pop-header">
+					<div class="pop-header-title-wrap">
+						<h3 class="pop-header-title">게시글 조회 현황</h3>
+						<button class="btn-pop-close js-pop-close" @click="closeHisPopup">닫기</button>
+					</div>
+				</header>
+				<div class="pop-container">
+					<div class="pop-common-box">
+						<div id="notiReadGrid">
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>

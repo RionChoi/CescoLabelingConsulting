@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.co.cusMgt.mapper.CusMgtMapper">
+
+    <!-- , [dbo].FN_FS_GETSNAME2('4',#{userId}, CST_ID) AS BOOK_SEQ -->
+    <!-- 고객사 관리 목록 -->
+    <select id="getCusList" resultType="com.cesco.co.cusMgt.dto.CusInfoDTO" parameterType="com.cesco.co.cusMgt.dto.CusSearchDTO">    
+        <![CDATA[
+
+        SELECT  CST_ID, CST_NM, CST_TP_CD, CST_MNG_BIZ, CST_BIZ_NO,
+                CST_TEL_NO, CST_FAX_NO, CST_EMAIL, CST_SYS_ID, STATUS,RGSTR_ID,[dbo].FN_FS_GETSNAME1('1',RGSTR_ID) as RGSTR_NM,
+                RGSTR_DT, MDFR_ID, [dbo].FN_FS_GETSNAME1('1',MDFR_ID) as MDFR_NM,MDFR_DT,SSMM
+
+        FROM [CESCOFS].[dbo].[TB_FS_CUST]
+        WHERE 1 = 1
+        ]]>
+        <if test='cst_id != ""'>
+            <![CDATA[
+            AND CST_ID LIKE '%' + #{cst_id} + '%'
+            ]]>
+        </if>
+        <if test='cst_nm != ""'>
+            <![CDATA[
+            AND CST_NM LIKE '%' + #{cst_nm} + '%' 
+            ]]>
+        </if>
+        <if test='cst_biz_no != ""'>
+            <![CDATA[
+            AND CST_BIZ_NO LIKE '%' + #{cst_biz_no} + '%' 
+            ]]>
+        </if>
+        <if test='status != ""'>
+            <![CDATA[
+            AND STATUS = #{status}
+            ]]>
+        </if>
+
+        <![CDATA[
+        ORDER BY CST_ID ASC
+
+        ]]>
+    </select>
+
+    <!-- 고객사 즐겨 찾기 등록 -->
+    <insert id="setCusBookIns" parameterType="com.cesco.co.cusMgt.dto.CusBookDTO">    
+        INSERT INTO [CESCOFS].[dbo].[TB_FS_BOOK] (SYS_ID, BOOK_TP_CD, FS_MNG_ID, CST_ID, BOOK_NM, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT)
+        VALUES(#{sys_id},#{book_tp_cd}, #{fs_mng_id}, #{cst_id}, #{book_nm}, #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE())
+    </insert>
+
+    <!-- 고객사 즐겨 찾기 해제 -->
+    <delete id="setCusBookDel" parameterType="com.cesco.co.cusMgt.dto.CusBookDTO">
+        DELETE FROM [CESCOFS].[dbo].[TB_FS_BOOK] WHERE SYS_ID = #{sys_id} AND FS_MNG_ID = #{fs_mng_id} AND BOOK_TP_CD = #{book_tp_cd} AND CST_ID = #{cst_id}        
+    </delete>
+
+    <!-- 고객사 즐겨 찾기 해제(BOOK_SEQ) -->
+    <delete id="setCusBookDelSeq">
+        DELETE FROM [CESCOFS].[dbo].[TB_FS_BOOK] WHERE BOOK_SEQ = #{book_seq} AND FS_MNG_ID = #{userId}
+    </delete>
+
+    <!-- 고객사 코드 중복 확인 -->
+    <select id="getCusInfoCnt" resultType="Integer" parameterType="com.cesco.co.cusMgt.dto.CusInfoDTO">    
+        SELECT COUNT(CST_ID) FROM [CESCOFS].[dbo].[TB_FS_CUST] WHERE CST_ID = #{cst_id}
+    </select>
+
+    <!-- 고객사 등록 -->
+    <insert id="setCusInfoIns" parameterType="com.cesco.co.cusMgt.dto.CusInfoDTO">    
+        <![CDATA[
+        INSERT INTO [CESCOFS].[dbo].[TB_FS_CUST](CST_ID, CST_NM, CST_TP_CD, CST_MNG_BIZ ,CST_BIZ_NO, CST_TEL_NO, CST_FAX_NO, 
+						CST_EMAIL, CST_SYS_ID, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM)
+        VALUES( [dbo].FN_FS_GETSEQUENCE('FS','FS', ''), #{cst_nm}, #{cst_tp_cd}, #{cst_mng_biz}, #{cst_biz_no}, #{cst_tel_no}, #{cst_fax_no}, 
+                                #{cst_email}, #{cst_sys_id}, #{status}, #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(), #{ssmm})
+        ]]>
+    </insert>
+
+    <!-- 고객사 수정 -->
+    <update id="setCusInfoUpt" parameterType="com.cesco.co.cusMgt.dto.CusInfoDTO">    
+        <![CDATA[
+        UPDATE [CESCOFS].[dbo].[TB_FS_CUST]
+        SET CST_NM = #{cst_nm}, CST_TP_CD = #{cst_tp_cd}, CST_MNG_BIZ = #{cst_mng_biz}, CST_BIZ_NO = #{cst_biz_no},
+            CST_TEL_NO = #{cst_tel_no}, CST_FAX_NO = #{cst_fax_no}, CST_EMAIL = #{cst_email}, CST_SYS_ID = #{cst_sys_id},
+            STATUS = #{status}, MDFR_ID = #{mdfr_id}, MDFR_DT = GETDATE(), SSMM = #{ssmm}
+        WHERE CST_ID = #{cst_id}
+        ]]>
+    </update>
+
+    <!-- 고객사 인증 정보 가져오기 -->
+    <select id="getCusCertificationInfo" resultType="com.cesco.co.cusMgt.dto.CusCertificationInfoDTO">
+        {
+            CALL Usp_Fs_Get_Comm_Cust_Info (#{cust_cd})
+        }
+    </select>
+
+</mapper>
+

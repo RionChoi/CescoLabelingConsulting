@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.hc.consulting_hc.mapper.ConsultingListMapper_hc">
+
+    <!-- 컨설팅 목록 조회 -->
+    <select id="getList" parameterType="com.cesco.hc.consulting_hc.dto.ConsultingReqDto" resultType="com.cesco.hc.consulting_hc.dto.ConsultingResDto">
+      { CALL CESCOFS.dbo.Usp_Hc_Get_CoslMgtList
+              ( #{p_type}
+              , #{sys_id} 
+              , #{cst_id}
+              , #{rgstr_id}
+              , #{food_type} 
+              , #{product_name} 
+              , #{cst_mng_id} 
+              , #{fs_mng_id} 
+              , #{start_date} 
+              , #{end_date}
+              , #{fs_status_cd}
+              , #{dept_cd}
+      )}
+    </select>
+
+    <!-- 완료확인서 조회 -->
+    <select id ="getComplete" parameterType="com.cesco.hc.consulting_hc.dto.ConCompletReqDto" resultType="com.cesco.hc.consulting_hc.dto.ConCompleteDto">
+      { CALL CESCOFS.dbo.Usp_Hc_Get_Complete(
+          #{sys_id}
+        , #{fs_no}
+        , #{fs_seq}
+        , #{write_auth}
+      )}
+    </select>
+
+    <select id = "getCompletAttach" parameterType="com.cesco.hc.consulting_hc.dto.CompletAttachListDto" resultType="com.cesco.hc.consulting_hc.dto.CompletAttachDto">
+      { CALL [dbo].[Usp_Fs_Get_Mst_Atch_List] ( #{sys_id}, #{fs_no}, #{atch_kn_cd}) }
+    </select>
+
+    <!-- 완료확인서 등록/수정 -->
+    <insert id="setComplete" parameterType="com.cesco.hc.consulting_hc.dto.ConCompleteDto">
+      { CALL CESCOFS.dbo.Usp_Hc_Set_Complete(
+              #{sys_id}          
+          ,   #{fs_no}           
+          ,   #{con_start_date}  
+          ,   #{con_end_date}    
+          ,   #{con_text11}      
+          ,   #{con_text12}      
+          ,   #{con_text21}      
+          ,   #{con_text22}      
+          ,   #{con_text31}      
+          ,   #{con_text32}      
+          ,   #{con_text41}      
+          ,   #{con_text42}      
+          ,   #{con_text51}      
+          ,   #{con_text52}      
+          ,   #{con_text61}      
+          ,   #{con_text62}      
+          ,   #{con_text71}      
+          ,   #{con_text72}      
+          ,   #{con_text81}      
+          ,   #{con_text82}      
+          ,   #{con_text91}      
+          ,   #{con_text92}      
+          ,   #{con_text101}     
+          ,   #{con_text102}     
+          ,   #{con_complet_date}
+          ,   #{cst_mng_id}      
+          ,   #{cst_mng_sig_yn}  
+          ,   #{cst_mng_sig_date}
+          ,   #{fs_mng_id}       
+          ,   #{fs_mng_sig_yn}   
+          ,   #{fs_mng_sig_date} 
+          ,   #{status}          
+          ,   #{rgstr_id}        
+          ,   #{rgstr_dt}        
+          ,   #{mdfr_id}         
+          ,   #{mdfr_dt}         
+          ,   #{ssmm}  
+          ,   #{con_complet_tp_cd}
+          ,   #{fs_sign_image}
+          ,   #{fs_cst_image}
+      )}
+    </insert>
+
+    <update id="setReqUpdate" parameterType="com.cesco.hc.consulting_hc.dto.ConCompleteDto">
+      <!-- UPDATE CESCOFS.dbo.TB_FS_HC_COMPLET SET 
+               FS_MNG_SIG_YN = 'N'
+             , CON_COMPLET_TP_CD = '01'
+             , FS_SIGN_IMAGE = ''
+             , MDFR_ID = #{cst_mng_id}
+             , MDFR_DT = GETDATE() 
+      WHERE FS_NO = #{fs_no}
+      AND   SYS_ID = #{sys_id} -->
+      UPDATE CESCOFS.dbo.TB_FS_HC_COMPLET SET 
+              MDFR_ID = #{cst_mng_id}
+             , MDFR_DT = GETDATE() 
+      WHERE FS_NO = #{fs_no}
+      AND   SYS_ID = #{sys_id}
+    </update>
+
+    <!-- 관리자에게 세스톡 보내기 -->
+    <insert id="setMsgAlarm" parameterType="com.cesco.hc.consulting_hc.dto.ConCompleteDto">
+      {CALL CESCOFS.dbo.Usp_Hc_Set_Complete_Alarm(
+          #{fs_mng_id}
+        , #{cst_mng_nm}
+        , #{contents}
+      )} 
+    </insert>
+
+    <!-- 파일 정보 업로드 -->
+    <insert id ="setCompletAttachInfo" parameterType="com.cesco.hc.consulting_hc.dto.CompletAttachDto">
+      {CALL CESCOFS.dbo.Usp_Hc_Set_CompletAttach(
+            #{sys_id}
+          , #{fs_no}
+          , #{atch_kn_cd}
+          , #{atch_nm}
+          , #{url}
+          , #{org_file_nm}
+          , #{ser_file_nm}
+          , #{rgstr_id}
+      )}
+    </insert>
+
+    <!-- 파일 정보 찾기 -->
+    <select id="getAttachDownloadInfo" resultType="com.cesco.hc.consulting_hc.dto.CompletAttachDto" >    
+      SELECT ORG_FILE_NM, URL, ATCH_SIZE FROM TB_FS_ATTACH WHERE SER_FILE_NM = #{ser_file_nm} 
+    </select>
+
+    <update id="setDelAttach" parameterType="com.cesco.hc.consulting_hc.dto.CompletAttachDto">
+      UPDATE [dbo].TB_FS_ATTACH
+         SET STATUS        = 'N'
+           , MDFR_ID       = #{mdfr_id}
+           , MDFR_DT       = GETDATE()
+       WHERE 1=1
+         AND SYS_ID        = #{sys_id}
+         AND FS_NO         = #{fs_no}
+         AND ATCH_SEQ      = #{atch_seq}
+  </update>
+
+  <!-- 협업툴안에서 진행상태 표시 -->
+  <select id ="uspHcgetChatStatusList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.hc.consulting_hc.dto.HcgetChatStatusDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Get_Chat_Status_List(#{sys_id}, #{fs_no})}
+  </select>
+  <!-- 시간외방문내역조회 -->
+  <select id ="uspHcgetCoslEtcDayList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.hc.consulting_hc.dto.TbFsHcEtcdayDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Get_CoslEtcDayList(#{sys_id}, #{fs_no})}
+  </select>
+  <!-- 수행일지 조회-->
+  <select id ="uspHcGetActivityRecord" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.hc.consulting_hc.dto.ActivityRecordListDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Get_ActivityRecord(#{sys_id},#{fs_no},#{fs_seq},#{md_day})}
+  </select>
+  <!-- 수행일지내역-->
+  <select id ="uspHcgetCoslMDayList" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto" resultType="com.cesco.hc.consulting_hc.dto.TbFsHcMdayDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Get_CoslMDayList(#{sys_id},#{fs_no})}
+  </select>
+  <!-- 서비스외 방문일 등록 -->
+  <insert id="nonServiceVisitDateReg" parameterType="com.cesco.hc.consulting_hc.dto.NonServiceVisitDateRegDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Set_No_Service_Reg(
+       #{sys_id}
+      ,#{fs_no}
+      ,#{etc_date}
+      ,#{fs_mng_id}
+      ,#{cst_mng_id}
+    )}
+  </insert>
+    <!-- 서비스외 방문일 삭제 -->
+    <delete id="nonServiceVisitDateDel" parameterType="com.cesco.fs.consulting.dto.ConsChatReqDto">
+      DELETE FROM CESCOFS.dbo.TB_FS_HC_ETCDAY
+        WHERE SYS_ID=#{sys_id}
+          AND FS_NO=#{fs_no}
+          AND ETC_SEQ=#{etc_seq};
+    </delete>
+  <!-- 고객 방문일 확인 -->
+  <update id="saveVisitConfirmation" parameterType="com.cesco.hc.consulting_hc.dto.NonServiceVisitDateRegDto">
+    { CALL CESCOFS.dbo.Usp_Hc_Set_Visit_Confirm(
+       #{sys_id}
+      ,#{fs_no}
+      ,#{etc_date}
+      ,#{cst_mng_id}
+    )}
+  </update>
+
+</mapper>

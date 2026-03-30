@@ -1,0 +1,832 @@
+
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+
+    $(document).ready(function(){
+        vue =new Vue({
+            el: '#app',
+            data: {
+                // sysId: [[${session.sysCode}]],
+                // userId: [[${session.userId}]],
+                userTpCd: [[${session.userTpCd}]],
+                cstcd: '',//[[${session.cstcd}]],
+
+                regPop: false,
+                editPop: false,
+
+                startDate: '',
+                endDate: '',
+
+                srchCstId: '',
+                srchMngId: '',
+                yn: '',
+                srchTaxBillId : '',
+                srchBillYn : '',
+
+                serviceAccount : 0,    // 서비스 금액
+                paymentAccount : 0,    // 납입액
+
+                cstList: [],    // 고객사 list
+                mngList: [],    // 담당자 List
+                ynList: [],     // yn List
+                proceedList:[], // 진행상태코드 : SYS_ID : FS / CMM_CD : FS020
+                deptList:[],    // 부서(지역본부)
+                cesMng:[],      // 세스코 담당자
+                productNm : [], // 상품명
+
+                calculateList: [],      // 정산 목록
+                calculateDtlList : [],  // 정산 상세
+
+                // 조회시 필요한 파라미터 값.
+                srchParam : {
+                        sys_id:'',                // 시시템 id
+                        customer:'',              // 고객사유형
+                        workplace:'',             // 협력사유형
+                        food_type:'',             // 식품유형 코드 
+                        product_name:'',          // 제품명
+                        manager:'',               // 담당자
+                        cesco_person_in_charge:'',// 세스코 담당자
+                        start_date:moment().format('YYYY-MM-DD'), // 시작일
+                        end_date:moment().format('YYYY-MM-DD'),   // 종료일
+                        fs_status_cd:'', // 진행상태
+                        fs_prod_cd: '',    // 상품명(코드?)
+
+                    },
+                srchCodeParam : [
+                    { sys_cd: 'FS', cmm_cd: 'FS011', arr_nm: 'fs011List' },
+                    { sys_cd: 'FS', cmm_cd: 'FS002', arr_nm: 'fs002List' },
+                    { sys_cd: 'FS', cmm_cd: 'FS004', arr_nm: 'fs004List' }
+                ]              
+            },
+
+            mounted: function() {
+                var _this = this;
+
+                $("#time05").click();    
+                
+                // $( "#opener" ).click();
+                // 공통 코드 목록
+                var param = [
+                    {cmm_cd:'FS017', arr_nm:'productNm', comboType:'select'},            // 상품명
+                    {cmm_cd:'FS020', arr_nm:'proceedList', comboType:'all'},             // 진행상태(HACCP 진행상태 cmd_cd: FS020)
+                    {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchParam.customer, p_parm4:_this.srchParam.start_date, p_parm5:_this.srchParam.end_date, arr_nm:'cesMng', comboType:'all'}, // 세스코 담당자
+                    {cmm_cd:'dept', p_type:'01', arr_nm:'deptList', comboType:'all'},    //부서 =? 지역본부 ?
+                    {cmm_cd:'cst', p_type:'03', arr_nm:'cstList', comboType:'all'}       // 고객사
+                ]
+                // getCodeListForArrNm(param, _this);
+			    getCodeListForArrNm(param, _this);
+                getCodeAdapterListForArrNm(_this.srchCodeParam, _this, _this.getMainList);
+                this.getCalculateList();
+            },
+
+
+            methods: {
+
+
+
+                setDivCenter: function(val, tag){
+
+                    let inTag = "height:100%;";
+                    inTag += "display:flex;";
+                    inTag += "flex-direction:column;";
+                    inTag += "justify-content:center;";
+                    inTag += "align-items:center;";
+                    inTag += "word-break:break-all;";
+                    inTag += tag;
+
+                    return "<div style='" + inTag + "'>" + val + "</div>";
+                },
+
+
+
+                getCalculateList: function() {
+                    let url = '/api/hc_calculate/getCalculateList_hc';
+                    let _this = this;
+                    let msg = '';
+                    let param = {};
+                    
+                    param.p_type = '1';
+                    param.sys_id = 'HC';
+                    param.start_date = _this.startDate.replaceAll('-', '');
+                    param.end_date = _this.endDate.replaceAll('-', '');
+                    param.cst_id = _this.cstcd;//srchCstId;
+                    param.tax_bill_id = _this.srchTaxBillId;
+                    param.fs_bill_yn = _this.srchBillYn;      
+                    
+                    // 추가
+                    param.fs_status_cd = _this.srchParam.fs_status_cd; // 진행단계
+                    param.fs_mng_id = _this.srchParam.cesco_person_in_charge;   // 세스코 담당자
+                    param.fs_prod_cd = _this.srchParam.fs_prod_cd; // 상품명(코드?)
+
+                    axiosCall('get',url, param, function(res){
+                        if(res.data.length != 0){
+                            console.log(res.data)
+                            _this.calculateList = res.data;
+
+                            //<!--고객(TpCd = 01)이 아닐경우-->
+                            if(_this.userTpCd != '01'){
+                                _this.drawTable();
+
+                                // est_amt : 서비스금액
+                                _this.serviceAccount = 0;
+                                _this.calculateList.forEach(calculate => {
+                                    _this.serviceAccount += calculate.est_amt;
+                                    // _this.serviceAccount = _this.serviceAccount.toLocaleString('ko-KR');
+                                });
+                                _this.serviceAccount = _this.serviceAccount.toLocaleString('ko-KR');
+
+                                // bill_ar_amt : 납입액
+                                _this.paymentAccount = 0;
+                                _this.calculateList.forEach(calculate => {
+                                    _this.paymentAccount += calculate.bill_ar_amt;
+                                });
+                                _this.paymentAccount = _this.paymentAccount.toLocaleString('ko-KR');
+
+                            //<!--고객(TpCd = 01)일 경우-->    
+                            }else{
+                                _this.cst_drawTable();
+                            }
+
+
+                        }else{
+                            _this.calculateList = [];
+
+                            if(_this.userTpCd != '01'){
+                                _this.drawTable();
+                            _this.serviceAccount = 0; // 서비스금액
+                            _this.paymentAccount = 0; // 납입액
+                            }else{
+                                _this.cst_drawTable();
+                            }
+                            console.log("데이터가 존재하지 않습니다.");
+                        }
+                    }, msg);
+
+                },
+
+
+                // 정산 상세화면 - 세부내역 grid 
+                getCalculateListDetail: function() {
+                    let url = '/api/hc_calculate/getCalculateDtList_hc';
+                    let _this = this;
+                    let msg = '';
+                    let param = {};
+                    
+                    param.p_type = '1';
+                    param.sys_id = 'HC';
+                    param.start_date = _this.startDate.replaceAll('-', '');
+                    param.end_date = _this.endDate.replaceAll('-', '');
+                    param.cst_id = _this.cstid;//srchCstId;
+                    param.tax_bill_id = _this.srchTaxBillId;
+                    param.fs_bill_yn = _this.srchBillYn;      
+                    
+                    // 추가
+                    param.fs_status_cd = _this.srchParam.fs_status_cd; // 진행단계
+                    param.fs_mng_id = _this.srchParam.cesco_person_in_charge;   // 세스코 담당자
+                    param.fs_prod_cd = _this.srchParam.fs_prod_cd; // 상품명(코드?)
+
+                    axiosCall('get',url, param, function(res){
+                        if(res.data.length != 0){
+                            console.log(res.data)
+                            _this.calculateDtlList = res.data;
+
+                            //<!--고객(TpCd = 01)이 아닐경우-->
+                            if(_this.userTpCd != '01'){
+                                _this.drawTable();
+
+                                // est_amt : 서비스금액
+                                _this.serviceAccount = 0;
+                                _this.calculateDtlList.forEach(calculate => {
+                                    _this.serviceAccount += calculate.est_amt;
+                                });
+
+                                // bill_ar_amt : 납입액
+                                _this.paymentAccount = 0;
+                                _this.calculateDtlList.forEach(calculate => {
+                                    _this.paymentAccount += calculate.bill_ar_amt;
+                                });
+
+                            //<!--고객(TpCd = 01)일 경우-->    
+                            }else{
+                                _this.cst_drawTable();
+                            }
+
+                        }else{
+                            _this.calculateDtlList = [];
+
+                            if(_this.userTpCd != '01'){
+                                _this.drawTable();
+                            _this.serviceAccount = 0; // 서비스금액
+                            _this.paymentAccount = 0; // 납입액
+                            }else{
+                                _this.cst_drawTable();
+                            }
+                            console.log("데이터가 존재하지 않습니다.");
+                        }
+                    }, msg);
+
+                },
+
+
+
+                setPeriod: function(e,val) {
+                    let _this = this;
+                    $('.but-tiem').removeClass('mini-btns-togger')
+                    e.target.setAttribute('class','but-tiem mini-btns-togger')
+                    var periodDate = getPeriod(val);
+                    console.log(periodDate);
+                    _this.srchParam.start_date = periodDate.startDt;
+                    _this.srchParam.end_date = periodDate.endDt;
+                    _this.startDate = periodDate.startDt;
+				    _this.endDate = periodDate.endDt;
+                    _this.changeCstCombo();
+                    _this.changeCombo();
+                },
+
+                // jqxgrid 생성 및 bind
+                drawTable: function() {
+                    let _this = this;
+
+                    // 정산대상 컨설팅 목록
+                    var calculateSource = {  
+                        datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                        datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+
+                        { name: 'sys_id', type: 'string' },               // 시스템id
+                        { name: 'cst_id', type: 'string' },               // 고객사id
+                        { name: 'cst_nm', type: 'string' },               // 고객사명
+                        { name: 'fs_no', type: 'string' },                // 컨설팅번호
+                        { name: 'fs_seq', type: 'string' },               // 컨설팅번호순번
+
+                        { name: 'prod_cd', type: 'string' },              // 상품코드
+                        { name: 'prod_nm', type: 'string' },              // 상품명
+                        { name: 'prod_tp_nm', type: 'string' },           // 상품유형명
+
+                        { name: 'corp_nm', type: 'string' },              // 참여자명
+                        { name: 'cst_mng_id', type: 'string' },           // 고객담당자
+                        { name: 'cst_mng_nm', type: 'string' },           // 고객담당자명
+                        { name: 'cst_mng_mobile', type: 'string' },       // 담당자연락처
+
+                        { name: 'bill_cst_id', type: 'string' },          // 정산거래처 :  신청시 등록시 넣는다.
+                        { name: 'bill_cst_nm', type: 'string' },          // 정산거래처명
+                        { name: 'receive_date', type: 'string' },         // 접수일자
+
+                        { name: 'tax_bill_id', type: 'string' },          // 정산담당자명
+                        { name: 'tax_bill_nm', type: 'string' },          // 정산담당자명
+                        { name: 'tax_bill_email', type: 'string' },       // 정산담당자이메일
+                        { name: 'fs_bill_item', type: 'string' },         // + 세금계산서 발행여부/청구번호
+
+                        { name: 'fs_mng_id', type: 'string' },            // 세스코담당자
+                        { name: 'cst_cesco_mng_nm', type: 'string' },     // 세스코담당자명
+
+                        { name: 'md_day', type: 'string' },               // 계약일수
+                        { name: 'mw_day', type: 'string' },               // 진행일수
+
+                        { name: 'fs_status_cd', type: 'string' },         // 진행상태
+                        { name: 'fs_status_nm', type: 'string' },         // 진행상태명
+                        { name: 'mem_cnt', type: 'string' },              // 참여자수
+
+
+                        { name: 'est_amt', type: 'number' },                 // 견적금액
+                        { name: 'bill_ar_amt', type: 'number' },             // + 납입금액(수금금액)
+                        { name: 'bill_amt', type: 'string' },             // + 청구금액
+                        { name: 'bill_net_amt', type: 'string' },         // + 미청구금액
+
+                        { name: 'mdfr_dt', type: 'string' }               // 수정일시 **** DB 데이터에 최종처리일 데이터가 없어서 일단은 수정일시 데이터 사용****
+                        ],  
+
+                        localdata: _this.calculateList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+                        pagenum: 0,
+                        pagesize: 10,
+                        pager: function (pagenum, pagesize, oldpagenum) {
+                        }
+                    };
+
+                    var dataAdapter = new $.jqx.dataAdapter(calculateSource);  
+
+                    $("#calculateGrid").jqxGrid('clearselection'); 
+
+                    $("#calculateGrid").jqxGrid({  
+                        width: '100%',
+                        // height: '300',    //** 변경
+                        // height: '250',       //** 변경
+                        autoheight: true,    //높이설정(자동) //* 변경
+                        source: dataAdapter, //위에서 만든 dataAdapter
+                        sortable: true,
+                        filterable: true,
+                        // columnsresize: true, //column의 너비를 컨텐츠에 맞게 리사이징
+                        pageable: true,
+                        pagermode: 'simple',
+                        // showrowlines: false,
+                        // showcolumnlines: false,
+                        // selectionmode: 'singlerow', // ** 변경
+                        selectionmode:'checkbox',      // ** 변경
+                        columnsheight: 100,   //** 변경
+                        // autorowheight: true,
+                        // editable: true,      // ** 변경
+                        pagesize			:   5,
+                        pagerbuttonscount	:   5,
+                        columnsheight       :   60,
+
+                        ready: function() {
+                            // $("#calculateGrid").find('.jqx-grid-column-header:first').children().hide();
+                        },
+                        columns: [                  // 각 컬럼값들의 대한 설정이다.
+                            // {
+                            //     text: 'No', sortable: false, filterable: false, editable: false, groupable: false, draggable: false, resizable: false, datafield: '', columntype: 'number', width: 30, cellsalign:'center', align:'center',
+                            //     cellsrenderer: function (row, column, value) {
+                            //         return "<div style='text-align: center; margin-top: 40%;'>" + (value + 1) + "</div>";
+                            //     }
+                            // },
+                            {
+                                text: 'No', sortable: false, filterable: false, editable: false,width: '3%',
+                                groupable: false, draggable: false, resizable: false,
+                                datafield: '', columntype: 'number', align:'center',
+                                cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter((value + 1));
+                                },
+                            },
+
+                            { text: '고객사', datafield: 'cst_nm', cellsalign:'center', align:'center', resizable: false, editable: false },  
+
+
+                            // // 셀클릭 // ( indicationCoslList.html(표시컨설팅-표시컨설팅) 참조 )
+                            { text: '고객코드', datafield: 'cst_id', cellsalign:'center', align:'center', width:150, resizable: false, editable: false, 
+                                cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+
+                                        // var param = {sys_id:rowdata.sys_id, fs_no:rowdata.fs_no, fs_seq:rowdata.fs_seq};
+                                        var param = {sys_id:rowdata.sys_id, fs_no:rowdata.fs_no, fs_seq:rowdata.fs_seq};
+                                        var html = "<div style='margin: 10px 0px 0px 0px'>"
+                                                + "<span>"+ value +"</span><br>"
+                                                + "<a href='#none' class='a-link'>"+ rowdata.fs_no +"</a>";
+        										// + "<a href='#none' class='a-link' onClick='vue.movePage(\"1\", "+ JSON.stringify(param) +")'>"+ value +"</a>"
+                                                + "</div>"
+
+                                        return html;
+                                    }
+                            },  
+
+                            { text: '상품명', datafield: 'prod_nm', cellsalign:'center', align:'center', width:150,  resizable: true, resizable: false, editable: false },
+                            { text: '접수(계약)일', datafield: 'receive_date',cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false },
+                            { text: '계산서 담당자', datafield: 'tax_bill_id', cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false },
+                            { text: '계산서 발행 이메일', datafield: 'tax_bill_email',cellsalign:'center', align:'center', resizable: false, resizable: true, editable: false },
+                            { text: '지역본부', datafield: 'deptList', cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false },
+                            { text: '세스코 담당자', datafield: 'cst_cesco_mng_nm', cellsalign:'center', align:'center', resizable: false, resizable: true, editable: false },
+                            { text: '서비스금액', datafield: 'est_amt', cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false
+                                , cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter(value.toLocaleString('ko-KR'));
+                                }
+                            },
+                            { text: '납입액', datafield: 'bill_ar_amt', cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false 
+                                , cellsrenderer: function (row, column, value) {
+                                        return _this.setDivCenter(value.toLocaleString('ko-KR'));
+                                    }
+                            },
+                            { text: '진행단계', datafield: 'fs_status_nm', cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false },
+                            { text: '최종처리일', datafield: 'mdfr_dt',cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false 
+                                , cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter(value.substring(0, 10));
+                                }
+                            }
+                        ]  
+                    });
+
+
+
+                    // 셀클릭 // ( indicationCoslList.html 참조 )
+                    $('#calculateGrid').off('cellclick').on('cellclick', function(e) {
+                        if(e.args.datafield == 'cst_id') {// [고객코드] 클릭시 상세이동
+                            window.localStorage.setItem('calculateGridRow',JSON.stringify(_this.calculateList[e.args.row.bounddata.boundindex]));
+                            window.location = "/calculate/settlementList/calculateDetail_hc" 
+                        } 
+                    });
+
+
+
+                    // let pageNum = 0;
+                    // // 페이지 이동시 선택 초기화
+                    // $("#calculateGrid").off('pagechanging').on('pagechanging', function (event) {
+                    //     pageNum = event.args.pagenum
+                    //     $('#calculateGrid').jqxGrid('clearselection');
+                    // });
+
+
+                    // // pagechanging
+                    // $("#calculateGrid").on('pagechanging', function (event) {
+                    //     let pageInfo = event.args;
+
+                    //     // 이전 페이지(oldpagenum) checkbox 해제
+                    //     let oldFirstIdx = (pageInfo.oldpagenum * pageInfo.pagesize);
+                    //     let oldNextFirstIdx = ((pageInfo.oldpagenum + 1) * pageInfo.pagesize);
+                    //     for(var i = oldFirstIdx; i < oldNextFirstIdx; i++) {
+                    //         $("#calculateGrid").jqxGrid('unselectrow', i);
+                    //     }
+                    // });
+
+
+                    // 체크박스 전체 해제
+                    $("#calculateGrid").jqxGrid('unselectallrows');
+
+                },  // drawTable() 끝
+
+
+
+                // 고객 로그인시 jqxgrid
+                cst_drawTable: function() {
+                    let _this = this;
+
+                    // 정산대상 컨설팅 목록
+                    var calculateSource = {  
+                        datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                        datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+
+                        { name: 'sys_id', type: 'string' },               // 시스템id
+                        { name: 'cst_id', type: 'string' },               // 고객사id
+                        { name: 'cst_nm', type: 'string' },               // 고객사명
+                        { name: 'fs_no', type: 'string' },                // 컨설팅번호
+                        { name: 'fs_seq', type: 'string' },               // 컨설팅번호순번
+
+                        { name: 'prod_cd', type: 'string' },              // 상품코드
+                        { name: 'prod_nm', type: 'string' },              // 상품명
+                        { name: 'prod_tp_nm', type: 'string' },           // 상품유형명
+
+                        { name: 'corp_nm', type: 'string' },              // 참여자명
+                        { name: 'cst_mng_id', type: 'string' },           // 고객담당자
+                        { name: 'cst_mng_nm', type: 'string' },           // 고객담당자명
+                        { name: 'cst_mng_mobile', type: 'string' },       // 담당자연락처
+
+                        { name: 'bill_cst_id', type: 'string' },          // 정산거래처 :  신청시 등록시 넣는다.
+                        { name: 'bill_cst_nm', type: 'string' },          // 정산거래처명
+                        { name: 'receive_date', type: 'string' },         // 접수일자
+
+                        { name: 'tax_bill_id', type: 'string' },          // 정산담당자명
+                        { name: 'tax_bill_nm', type: 'string' },          // 정산담당자명
+                        { name: 'tax_bill_email', type: 'string' },       // 정산담당자이메일
+                        { name: 'fs_bill_item', type: 'string' },         // + 세금계산서 발행여부/청구번호
+
+                        { name: 'fs_mng_id', type: 'string' },            // 세스코담당자
+                        { name: 'cst_cesco_mng_nm', type: 'string' },     // 세스코담당자명
+
+                        { name: 'md_day', type: 'string' },               // 계약일수
+                        { name: 'mw_day', type: 'string' },               // 진행일수
+
+                        { name: 'fs_status_cd', type: 'string' },         // 진행상태
+                        { name: 'fs_status_nm', type: 'string' },         // 진행상태명
+                        { name: 'mem_cnt', type: 'string' },              // 참여자수
+
+
+                        { name: 'est_amt', type: 'number' },                 // 견적금액
+                        { name: 'bill_ar_amt', type: 'number' },             // + 납입금액(수금금액)
+                        { name: 'bill_amt', type: 'string' },             // + 청구금액
+                        { name: 'bill_net_amt', type: 'string' },         // + 미청구금액
+
+                        { name: 'mdfr_dt', type: 'string' },               // 수정일시 **** DB 데이터에 최종처리일 데이터가 없어서 일단은 수정일시 데이터 사용****
+                        
+                    
+                        ],  
+
+                        localdata: _this.calculateList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+                        pagenum: 0,
+                        pagesize: 10,
+                        pager: function (pagenum, pagesize, oldpagenum) {
+                        }
+                    };
+
+                    var dataAdapter = new $.jqx.dataAdapter(calculateSource);  
+
+                    $("#calculateGrid").jqxGrid('clearselection'); 
+
+                    $("#calculateGrid").jqxGrid({  
+                        width: '100%',
+                        // height: '300',    //** 변경
+                        height: '250',       //** 변경
+                        autoheight: true,    //높이설정(자동) //* 변경
+                        source: dataAdapter, //위에서 만든 dataAdapter
+                        sortable: true,
+                        filterable: true,
+                        columnsresize: true, //column의 너비를 컨텐츠에 맞게 리사이징
+                        pageable: true,
+                        pagermode: 'simple',
+                        showrowlines: false,
+                        showcolumnlines: false,
+                        // selectionmode: 'singlerow', // ** 변경
+                        selectionmode:'checkbox',      // ** 변경
+                        // columnsheight: 60,   //** 변경
+                        // autorowheight: true,
+                        // editable: true,      // ** 변경
+
+
+                        // ready: function() {
+                        //     $("#calculateGrid").find('.jqx-grid-column-header:first').children().hide();
+                        // },
+                        columns: [                  // 각 컬럼값들의 대한 설정이다.
+                            {
+                                // text: 'No', sortable: false, filterable: false, editable: false, groupable: false, draggable: false, resizable: false, datafield: '', columntype: 'number', width: 30, cellsalign:'center', align:'center',
+                                // cellsrenderer: function (row, column, value) {
+                                //     return "<div style='text-align: center;  margin-top: 65%;'>" + (value + 1) + "</div>";
+                                // }
+
+                                text: 'No', sortable: false, filterable: false, editable: false,width: '3%', groupable: false, draggable: false, resizable: false, datafield: '', columntype: 'number', align:'center',
+                                cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter((value + 1));
+                                },
+                                
+                            },
+                            // { text: '고객사', datafield: 'cst_nm', align:'center', editable: false },  
+                            // { text: '고객코드', datafield: 'cst_id', align:'center', editable: false },  
+                            { text: '상품명', datafield: 'prod_nm', cellsalign:'center', align:'center', width:150 ,resizable: false, editable: false },
+                            // { text: '접수(계약)일', datafield: 'receive_date', align:'center', width: 100, editable: false },
+                            { text: '계산서 담당자', datafield: 'tax_bill_id', cellsalign:'center', align:'center', resizable: false, editable: false },
+                            { text: '계산서 발행 이메일', datafield: 'tax_bill_email', cellsalign:'center', align:'center', resizable: false,editable: false },
+                            // { text: '지역본부', datafield: 'deptList', align:'center', width: 100, editable: false },
+                            { text: '세스코 담당자', datafield: 'cst_cesco_mng_nm',cellsalign:'center', align:'center', resizable: false,editable: false },
+                            { text: '서비스금액', datafield: 'est_amt', cellsalign:'center', align:'center', resizable: false,editable: false 
+                                , cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter(value.toLocaleString('ko-KR'));
+                                }
+                            },
+                            { text: '납입액', datafield: 'bill_ar_amt', cellsalign:'center', align:'center', resizable: false,editable: false 
+                                , cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter(value.toLocaleString('ko-KR'));
+                                }
+                            },
+                            { text: '진행단계', datafield: 'fs_status_nm', cellsalign:'center', align:'center', resizable: false,editable: false },
+                            // { text: '최종처리일', datafield: 'mdfr_dt', cellsalign:'center', align:'center', resizable: false,editable: false },
+                            { text: '최종처리일', datafield: 'mdfr_dt',cellsalign:'center', align:'center', resizable: true, resizable: false, editable: false 
+                                , cellsrenderer: function (row, column, value) {
+                                    return _this.setDivCenter(value.substring(0, 10));
+                                }
+                            }
+                        ]  
+                    });
+
+                    // 체크박스 전체 해제
+                    $("#calculateGrid").jqxGrid('unselectallrows');
+
+                },  // cst_drawTable() 끝
+
+                downloadXls : function(){
+                    if(this.calculateList.length > 0){
+                        console.log(this.calculateList.length);
+                        $('#calculateGrid').jqxGrid('exportdata', 'xls', 'calculate', true);
+                    }else{
+                        alert("내역이 존재하지 않습니다.");
+                        console.log("No Data");
+                    }
+                },
+                
+                // 페이지 이동(notice.html 참조)
+                movePage: function(idx, param) {
+                    let url = '';
+
+                    if(idx == '0') {
+                        // url = '/notice/noticeList?';
+                        url = '/settlementList/calculateDetail_hc?';
+                    } else if(idx == '1') {
+                        // url = '/notice/noticeDetails?';
+                        url = '/settlementList/calculateDetail_hc?';
+
+                    } else {
+                        alert('페이지 준비중입니다.');
+                        return;
+                    }
+
+                    // param data setting
+                    let paramStr = "";
+                    $.each(param, function(key, value){
+                        paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                    });
+                    
+                    window.location = url + paramStr;
+                },
+
+                onChangeStartDate: function(val) {
+                    this.startDate = val;
+                    this.srchParam.start_date = val;
+                    this.changeCombo();
+                },
+
+                onChangeEndDate: function(val) {
+                    this.endDate = val;
+                    this.srchParam.end_date = val;
+                    this.changeCombo();
+                },
+
+
+
+                // 고객사 comboBox change event
+                changeCstCombo: function() {
+                    var _this = this;
+                    var param = [
+                        {cmm_cd:'FS017', arr_nm:'productNm', comboType:'all'},              // 상품명
+                        {cmm_cd:'FS020', arr_nm:'proceedList', comboType:'all'},             // 진행상태(HACCP 진행상태 cmd_cd: FS020)                        
+                        // {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchParam.customer, arr_nm:'cesMng', comboType:'select'} // 세스코 담당자
+                        {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchParam.customer, p_parm4:_this.srchParam.start_date, p_parm5:_this.srchParam.end_date, arr_nm:'cesMng', comboType:'all'}, // 세스코 담당자
+                        {cmm_cd:'dept', p_type:'01', arr_nm:'deptList', comboType:'all'},    //부서 =? 지역본부 ?
+                        {cmm_cd:'cst', p_type:'03', arr_nm:'cstList', comboType:'all'}       // 고객사
+                    ];
+                        getCodeListForArrNm(param, _this);
+
+                    // 초기화
+                    _this.srchMngId = '';
+                },
+
+                // 일자변경시 콤보내역을 변경한다.
+                changeCombo: function() {  
+                        var _this = this;
+                        var param = [
+                        // {cmm_cd:'cst', p_type:_this.srchParam.cmbType, p_parm4:_this.srchParam.start_date,p_parm5:_this.srchParam.end_date,arr_nm:'cstList', comboType:'all'}, //고객사 구분
+                        // {cmm_cd:'mng', p_type:_this.srchParam.cmbType, p_parm4:_this.srchParam.start_date,p_parm5:_this.srchParam.end_date, arr_nm:'mngList', comboType:'all'} // 담당자
+
+                        {cmm_cd:'FS017', arr_nm:'productNm', comboType:'all'},              // 상품명
+                        {cmm_cd:'FS020', arr_nm:'proceedList', comboType:'all'},             // 진행상태(HACCP 진행상태 cmd_cd: FS020)                        
+                        // {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchParam.customer, arr_nm:'cesMng', comboType:'select'} // 세스코 담당자
+                        {cmm_cd:'mng', p_type:'02', p_parm1:_this.srchParam.customer, p_parm4:_this.srchParam.start_date, p_parm5:_this.srchParam.end_date, arr_nm:'cesMng', comboType:'all'}, // 세스코 담당자
+                        {cmm_cd:'dept', p_type:'01', arr_nm:'deptList', comboType:'all'},    //부서 =? 지역본부 ?
+                        {cmm_cd:'cst', p_type:'03', arr_nm:'cstList', comboType:'all'}       // 고객사
+                        ];                            
+                    getCodeListForArrNm(param, _this);
+                },
+                
+                initDrawTables: function() {
+                    this.drawTable();
+			    }   
+            }   // methods 끝
+	    }); // vue 컴포넌트 끝
+    }); // $(document).ready(function(){}끝
+
+
+// start date
+Vue.component('datePickerFrom', {
+    template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+    props: ['val'],
+    mounted: function() {
+        drawDatePicker(this, 'on-change-start-date');
+    },
+    beforeDestroy: function(){
+        destroyDatePicker(this);
+    },
+    methods: {
+    }
+});
+
+// end date
+Vue.component('datePickerTo', {
+    template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+    props: ['val'],
+    mounted: function() {
+        drawDatePicker(this, 'on-change-end-date');
+    },
+    beforeDestroy: function(){
+        destroyDatePicker(this);
+    },
+    methods: {
+    }
+});
+</script>
+</head>
+
+<body>
+    <section layout:fragment="content" id="app"  v-cloak>
+
+        <div class="page-content">
+            <div class="page-box">
+                <div class="clear">
+                    <h2 class="page-title fl">정산</h2>
+                    <div class="fr">
+                        <button class="btn-search" @click="getCalculateList()"><i></i>조회</button>
+                    </div>          
+                </div>
+                <hr>
+
+                <div class="board-search mgt20">
+                    <table>
+                        <colgroup>
+                            <col width="80px"><col width="25%"><col width="10%"><col width="">
+                            <col width="10%"><col width=""><col width="10%"><col width="">
+                        </colgroup>
+                        <tbody>
+                            <tr>
+                                <th rowspan="2" class="valign-b th-pd">기간</th>
+                                    <td rowspan="2" class="valign-b">
+                                        <div class="mini-btns">
+                                            <button id="time01" class="but-tiem mini-btns-togger" @click="setPeriod($event,'currentMonth')">당월</button>
+                                            <button id="time02" class="but-tiem" @click="setPeriod($event,'currentYear')">당해</button>
+                                            <button id="time03" class="but-tiem" @click="setPeriod($event,'oneMonth')">1개월</button>
+                                            <button id="time04" class="but-tiem" @click="setPeriod($event,'threeMonth')">3개월</button>
+                                            <button id="time05" class="but-tiem" @click="setPeriod($event,'sixMonth')">6개월</button>
+                                            <button id="time06" class="but-tiem" @click="setPeriod($event,'oneYear')">1년</button>
+                                        </div>
+
+                                        <div class="calendar-wrap">
+                                            <span class="calendar-box">
+                                                <date-picker-from name="startDate" type="text" id="startDate" size="12" title="정산 조회 시작일" 
+                                                :val="srchParam.start_date" @on-change-start-date="onChangeStartDate"/>
+                                                <label for="startDate"></label>
+                                            </span>
+                                            
+                                            <span class="dash">~</span>
+                                            <span class="calendar-box">
+                                                <date-picker-to name="endDate" type="text" id="endDate" size="12" title="정산 조회 종료일" 
+                                                :val="srchParam.end_date" @on-change-end-date="onChangeEndDate"/>
+                                                <label for="endDate"></label>
+                                            </span>
+                                        </div>
+                                    </td>
+                                <th>상품명</th>
+                                    <td>
+                                        <select class="full" v-model="srchParam.fs_prod_cd">
+                                            <option :value="item.cmm_dtl_cd" v-for="(item, index) in productNm">{{item.cmm_dtl_nm}}</option> 
+                                        </select>
+                                    </td>
+                                <!--고객(TpCd = 01) 이 아닐경우-->
+                                <th v-if = "userTpCd != '01'">서비스금액</th>
+                                    <td v-if = "userTpCd != '01'">
+                                        <div class="flex-auto-end">
+                                            <div><input type="text" class="full txt-r" v-model = "serviceAccount" readonly></div>
+                                            <div class="mgl5">원</div>
+                                        </div>
+                                    </td>
+
+                                <!--고객(TpCd = 01) 이 아닐경우-->   
+                                <th v-if = "userTpCd != '01'">납입액</th>
+                                    <td v-if = "userTpCd != '01'">
+                                        <div class="flex-auto-end">
+                                            <div><input type="text" class="full txt-r" v-model = "paymentAccount" readonly></div>
+                                            <div class="mgl5">원</div>
+                                        </div>
+                                    </td>
+                            </tr>
+                            <tr>
+                                <th>진행단계</th>
+                                <td>
+                                    <select class="full" v-model="srchParam.fs_status_cd">
+                                        <option v-for="code in proceedList" :value="code.cmm_dtl_cd">{{code.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                                <th>세스코담당자</th>
+                                <td>
+                                    <select class="full" v-model="srchParam.cesco_person_in_charge">
+                                        <option v-for="code in cesMng" :value="code.cmm_dtl_cd">{{code.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                                <!--고객(TpCd = 01) 이 아닐경우-->
+                                <th v-if = "userTpCd != '01'">지역본부</th>
+                                    <td v-if = "userTpCd != '01'"> 
+                                        <select class="full">
+                                            <option v-for="code in deptList" :value="code.cmm_dtl_cd">{{code.cmm_dtl_nm}}</option>
+                                        </select>
+                                    </td>
+                            </tr>
+                            <!--고객(TpCd = 01) 이 아닐경우-->
+                            <tr v-if = "userTpCd != '01'">
+                                <th>고객사</th>
+                                <td>
+                                    <select class="full" @change="changeCstCombo" >
+                                        <option v-for="code in cstList" :value="code.cmm_dtl_cd">{{code.cmm_dtl_nm}}</option>
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>                        
+            </div>    
+
+            <div class="page-box">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">현황</h3></div>
+                    <div class="fr">
+                        <!--고객(TpCd = 01) 이 아닐경우, 엑셀 다운로드 가능)-->
+                        <a href="javascript:void(0);" class="btn-save" v-if = "userTpCd != '01'" @click="downloadXls">엑셀다운로드</a>
+                    </div>
+                    <div id="calculateGrid"></div>
+                </div>    
+            </div>
+        </div>
+        <calculate-reg-pop v-if="regPop" :regPop="regPop" @close-reg-pop="closeRegPop"></calculate-reg-pop>
+        <calculate-edit-pop v-if="editPop" :editPop="editPop" @close-edit-pop="closeEditPop"></calculate-edit-pop>
+
+        <footer id="footer" class="footer">
+            <div class="footer-inner">
+                <div>
+                    (주)세스코 서울특별시 강동구 상일로 10길 46 세스코 터치센터(134-090)&nbsp;&nbsp;&nbsp;&nbsp;Tel : 1588-1119&nbsp;&nbsp;&nbsp;&nbsp;
+                    대표이사 : 사장 전찬혁&nbsp;&nbsp;&nbsp;&nbsp;사업자등록번호 : 212-81-05946<br>
+                    COPYRIGHT(C) BY CESCO CO., LTD. ALL RIGHTS RESERVED.
+                    <div class="footer-link-box">
+                        <a href="">개인정보처리방침</a>
+                        <a href="">서비스 이용약관</a>
+                        <a href="">전자금융거래이용약관</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </section>
+</body>
+</html>

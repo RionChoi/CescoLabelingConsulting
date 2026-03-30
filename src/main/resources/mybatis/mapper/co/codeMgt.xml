@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.co.codeMgt.mapper.CodeMgtMapper">
+
+    <select id="getCodeDtlList" resultType="com.cesco.co.codeMgt.dto.CodeDtlCodeDTO">    
+        <![CDATA[
+
+        SELECT SYS_ID, CMM_CD, CMM_DTL_CD, CMM_DTL_SEQ, CMM_DTL_NM, SRT, ETC_CD1, ETC_CD2, ETC_CD3, ETC_CD4, ETC_CD5, ETC_CD1_AMT,
+            RGSTR_ID, [dbo].FN_FS_GETSNAME1('1',RGSTR_ID) as RGSTR_NAME , RGSTR_DT, MDFR_ID, [dbo].FN_FS_GETSNAME1('1', MDFR_ID) as  MDFR_NAME , 
+            MDFR_DT, SSMM, STATUS, 'S' AS GRID_STATS
+
+        FROM [CESCOFS].[dbo].[TB_FS_COMM_DTL] WITH (NOLOCK)
+
+        WHERE CMM_CD = #{cmm_cd}
+        ORDER BY SRT
+
+        ]]>
+    </select>
+
+    <select id="getCodeCommList" resultType="com.cesco.co.codeMgt.dto.CodeCommCodeDTO" parameterType="com.cesco.co.codeMgt.dto.CodeCommCodeDTO">    
+        <![CDATA[
+        SELECT SYS_ID, CMM_CD, UP_CMM_CD, REF_CMM_CD, CMM_NM, CMM_DESC, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT  
+        FROM [CESCOFS].[dbo].[TB_FS_COMM]
+        WHERE 1 = 1 
+        ]]>        
+        <if test='cmm_cd != ""'>
+            <![CDATA[
+            AND CMM_CD LIKE '%' + #{cmm_cd} + '%'
+            ]]>
+        </if>
+        <if test='cmm_nm != ""'>
+            <![CDATA[
+            AND CMM_NM LIKE '%' + #{cmm_nm} + '%' 
+            ]]>
+        </if>
+        <if test='status != ""'>
+            <![CDATA[
+            AND STATUS = #{status}
+            ]]>
+        </if>
+        
+    </select>
+
+    <select id="getCodeCommCnt" resultType="int">
+        SELECT COUNT(CMM_CD) FROM [CESCOFS].[dbo].[TB_FS_COMM] WHERE CMM_CD = #{cmm_cd}
+    </select>
+
+    <insert id="setCodeCommIns" parameterType="com.cesco.co.codeMgt.dto.CodeCommCodeDTO" >
+    	INSERT INTO [CESCOFS].[dbo].[TB_FS_COMM]
+		(			
+			SYS_ID, CMM_CD, UP_CMM_CD, CMM_NM, CMM_DESC,
+            STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT
+		)
+		VALUES
+		(
+            #{sys_id}, #{cmm_cd}, #{up_cmm_cd}, #{cmm_nm}, #{cmm_desc},
+            #{status}, #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE()
+		)	
+	</insert>
+
+    <update id="setCodeCommUpt" parameterType="com.cesco.co.codeMgt.dto.CodeCommCodeDTO" >
+    	UPDATE [CESCOFS].[dbo].[TB_FS_COMM]
+		SET UP_CMM_CD = #{up_cmm_cd}, CMM_NM = #{cmm_nm}, CMM_DESC = #{cmm_desc},
+            STATUS = #{status}, MDFR_ID= #{mdfr_id}, MDFR_DT = GETDATE()
+        WHERE SYS_ID = #{sys_id} AND CMM_CD = #{cmm_cd}
+	</update>
+
+    <insert id="setCodeDtlIns" parameterType="com.cesco.co.codeMgt.dto.CodeDtlCodeDTO" >
+    	INSERT INTO [CESCOFS].[dbo].[TB_FS_COMM_DTL]
+		(			
+			SYS_ID, CMM_CD, CMM_DTL_CD, CMM_DTL_NM, SRT,
+            ETC_CD1, ETC_CD2, ETC_CD3, ETC_CD4, ETC_CD5, ETC_CD1_AMT,
+            STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT,SSMM
+		)
+		VALUES
+		(
+            #{sys_id}, #{cmm_cd}, #{cmm_dtl_cd}, #{cmm_dtl_nm}, #{srt},
+            #{etc_cd1}, #{etc_cd2}, #{etc_cd3}, #{etc_cd4}, #{etc_cd5}, #{etc_cd1_amt},
+            #{status}, #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(),#{ssmm}
+		)	
+	</insert>
+
+    <update id="setCodeDtlUpt" parameterType="com.cesco.co.codeMgt.dto.CodeDtlCodeDTO" >
+    	UPDATE [CESCOFS].[dbo].[TB_FS_COMM_DTL]
+		SET SYS_ID = #{sys_id}, CMM_CD = #{cmm_cd} , 
+            CMM_DTL_CD = #{cmm_dtl_cd} , CMM_DTL_NM = #{cmm_dtl_nm} , 
+            SRT = #{srt} ,
+            ETC_CD1 = #{etc_cd1}, ETC_CD2 = #{etc_cd2}, 
+            ETC_CD3 = #{etc_cd3}, ETC_CD4 = #{etc_cd4}, 
+            ETC_CD5 = #{etc_cd5}, ETC_CD1_AMT = #{etc_cd1_amt},
+            STATUS = #{status}, 
+            MDFR_ID = #{mdfr_id}, MDFR_DT = GETDATE(),
+            SSMM = #{ssmm}
+
+        WHERE CMM_DTL_SEQ = #{cmm_dtl_seq}
+	</update>
+    
+</mapper>
+

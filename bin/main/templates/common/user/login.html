@@ -1,0 +1,353 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+  var loginVue
+
+  $(document).ready(function(){
+    if (window.opener) {
+        alert('세션이 만료되었습니다. 로그인을 다시 해주세요.');
+        window.opener.location = window.location.pathname.substring(0, window.location.pathname.indexOf('/', 2)) + '/user/login';
+        self.close();
+    }
+    // 비밀번호 변경 팝업
+    Vue.component('login-change-pw-popup', {
+        template: "#loginChangePwPopup",
+        props: ['open','email','pwd'],
+        data() {
+          return {
+              answerText:'',
+              passwd:'',
+              repasswd:'',
+              msg:''
+          }
+        },
+        methods: {
+          onEmit(e) {
+              let _this = this;
+              e.preventDefault();
+              // 자식 값 전달
+              _this.$emit("on-change-open",false)
+          },
+          seveNewPW:function (e) {
+            e.preventDefault()
+            if(!!!this.passwd){
+              alert('변경할 비밀번호를 입력하세요')
+              this.focusPwd()
+              return false;
+            }
+            if(!!!this.repasswd){
+              alert('비밀번호 확인 입력하세요')
+              this.focusRePwd()
+              return false;
+            }
+            if(this.passwd != this.repasswd){
+              alert('변경할 비밀번호가 일치하지 않습니다.')
+              return false
+            }
+            // if(!pwdCheck(this.repasswd)){
+            //   alert('영문, 숫자, 특수문자 중 2가지 이상을 혼합하여 8자 이상입력해주세요')
+            //   return false;
+            // }
+            this.changePass()
+          },
+          changePass:function(){ // 비밀번호 변경
+            axios.put('/api/changePass',JSON.stringify({email:this.email,pwd:this.pwd,passwd1:this.passwd,passwd2:this.repasswd}),{
+              headers:{'AJAX': true,'Content-Type': 'application/json'}
+            }).then((res) => {      
+              alert("변경 되었습니다.")
+              // this.$emit("on-change-open",false)
+              location.href = "/fs/main"
+            }).catch((e)=>{
+              console.log("error: => " + e)
+              alert("변경 실페했습니다.")
+            })
+          },
+          focusPwd:function(){
+            this.$refs.passwd.focus()
+          },
+          focusRePwd:function(){
+            this.$refs.repasswd.focus()
+          }
+        },
+        mounted: function (){
+
+        },
+        watch: {
+          passwd (newPasswd) {
+            //data -> msg 데이터가 변경될 때 실행
+            console.log('New msg: ' + newPasswd)
+          },
+          repasswd (newRepasswd) {
+            //data -> msg 데이터가 변경될 때 실행
+            console.log('New msg: ' + newRepasswd)
+          },
+        }
+    })
+
+    loginVue = new Vue({
+      el: '#app',
+      data: {
+        parent:null,
+        origin:null,
+        sysCode:'FS',
+        htmlText:'',
+        email: '',
+        pwd: '',
+        pwdencode:'',
+        open:false,
+        codeList:[{cmm_dtl_cd:'FS',cmm_dtl_nm:'표시컨설팅'},{cmm_dtl_cd:'HC',cmm_dtl_nm:'햅섭'}]
+		  },
+      mounted: function (){
+        window.addEventListener('message', function(event){  
+          // 通过origin属性判断消息来源地址  
+          if (event.origin == 'http://localhost:3000') {
+            loginVue.postmsg()
+      
+              parent = event.source
+              origin = event.origin
+              alert()
+              console.log('b页面收到消息：' + event.data.msg)           
+      
+          }
+      }, false);  
+      },
+      methods: {
+        postmsg() {
+          if(!!window){
+            console.log('bbbbbbbbbbbbbb页面回消息')
+            parent.postMessage({
+                code: 1,
+                msg: 'hi, i am b.html'
+            }, origin)
+
+          }
+      },
+        userAuth: function(e){ // 로그인
+          e.preventDefault()
+          let _this = this; 
+          if(this.email == null || this.email == ''){
+            alert('이메일을 입력하세요')
+            this.focusId();
+            return false;
+          }
+          if(this.pwd == null || this.pwd == ''){
+              alert('비밀번호를 입력하세요')
+              this.focusPwd()
+              return false;
+            }
+            
+          let url = '/api/login';
+          let param = {email:_this.email,pwd:_this.pwd,sys_code:_this.sysCode};
+          axiosCall('post',url,param,res=>{
+            if (!res.data) {
+                alert("ID 또는 비밀번호를 확인해주세요")
+              } else {
+                if (res.data.pwd_init_yn == "Y") {
+                  this.onChangeOpen(true)
+                } else {
+                  this.setSaveid()
+                  let userType = res.data.user_tp_cd;
+                  let sysId = _this.sysCode;
+                  if(sysId == 'HC' && (userType == '01' || userType == '02')) {
+                    location.href = "/main"
+                  } else if(sysId == 'FS' && (userType == '01' || userType == '02')) {
+                    location.href = "/fs/main" 
+                  } else {
+                    location.href = "/notice/noticeList" 
+                  }
+                }
+              }
+          },'');
+        },
+        setSaveid:function() { // 로그인 ID 저장
+          var expdate = new Date();
+          if ($("#saveid").is(":checked")){
+              expdate.setTime(expdate.getTime() + 1000 * 3600 * 24 * 30);
+              this.setCookie("saveid", $("#email").val(), expdate);
+              }else{
+            expdate.setTime(expdate.getTime() - 1000 * 3600 * 24 * 30);
+              this.setCookie("saveid", $("#email").val(), expdate);
+              
+          }
+        },
+        fnInit:function(){ // COOKIT 체크
+          var cookieid = this.getCookie("saveid");
+          if(cookieid !=""){
+              $("input:checkbox[id='saveid']").prop("checked", true);
+              $('#email').val(cookieid);
+          }
+          
+        },   
+        setCookie: function(name, value, expiredays) { // 쿠키 셋팅
+          console.log("setCookie:",name + "<- value:" + value + "expiredays:" + expiredays);
+          var todayDate = new Date();
+          todayDate.setTime(todayDate.getTime() + 0);
+          if(todayDate > expiredays){
+              document.cookie = name + "=" + escape(value) + "; path=/; expires=" + expiredays + ";";
+          }else if(todayDate < expiredays){
+              todayDate.setDate(todayDate.getDate() + expiredays);
+              document.cookie = name + "=" + escape(value) + "; path=/; expires=" + todayDate.toGMTString() + ";";
+          }
+        },
+        getCookie:function (Name) { // 쿠키 조회
+          var search = Name + "=";
+          
+          if (document.cookie.length > 0) { // 쿠키가 설정되어 있다면 
+              offset = document.cookie.indexOf(search);
+              if (offset != -1) { // 쿠키가 존재하면 
+                  offset += search.length;
+                  // set index of beginning of value
+                  end = document.cookie.indexOf(";", offset);
+                  // 쿠키 값의 마지막 위치 인덱스 번호 설정 
+                  if (end == -1)
+                      end = document.cookie.length;
+                  return unescape(document.cookie.substring(offset, end));
+              }
+          }
+            return "";
+        },
+        onChangeOpen: function(val) { // 팝업 제어
+          this.open = val
+        },
+        focusId: function(e){
+          this.$refs.email.focus()
+        },
+        focusPwd: function(e){
+          this.$refs.pwd.focus()
+        }
+		}
+	})
+});
+</script>
+</head>
+<body>
+	<section class="wrap" layout:fragment="content" id="app"  v-cloak>
+		<div class="page-head">
+      <!-- content -->
+      <div class="page_login">
+        <div class="tab_con">
+          <div v-html="htmlText"></div>
+          <form name="userForm" ref="form">
+            <fieldset>
+              <legend>회원 로그인 폼</legend>
+              <div class="form_login">
+                <div class="box">
+                    <h4>이메일</h4>
+                    <div class="input_wrap">
+                        <div class="input_box">
+                            <input type="text" v-model="email" @keyup.enter="focusId" ref="email" name="email" id="email" maxlength="100" class="required ime-mode-disabled" value="" placeholder="아이디 또는 이메일을 입력하세요." title="회원아이디">
+                        </div>
+                    </div>
+                </div>
+                <div class="box">
+                    <h4>비밀번호</h4>
+                    <div class="input_wrap">
+                        <div class="input_box">
+                            <input type="password" v-model="pwd" @keyup.enter="focusPwd" ref="pwd" name="pwd" id="pwd" class="required" title="비밀번호" placeholder="비밀번호를 입력하세요">
+                        </div>
+                    </div>
+                </div>
+                <div class="chk_wrap">
+                    <div class="chk_box">
+                        <input type="checkbox" class="blind" id="saveid" name="op_remember_me" @click="setSaveid" value="true">
+                        <label for="saveid" >이메일 저장</label>
+
+                        <div style="margin:-31px 0px 0px 250px;">
+                          <label for="fruit">서비스</label>
+                          <select id="fruit" name="fruit" title="검색분류선택" v-model="sysCode">
+                            <option v-for="(item, index) in codeList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+                          </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn_wrap">
+                    <button class="btn_login" title="로그인" @click="userAuth">로그인</button>
+                </div>
+              </div>
+            </fieldset>
+          </form>
+            <div class="login_util_wrap">
+              <ul class="find_box">
+                <li><a :href="'/user/loginId/' + sysCode">아이디 찾기</a></li>
+                <li><a :href="'/user/loginForgotPw/' + sysCode">비밀번호 찾기</a></li>
+              </ul>
+            </div>
+        </div>
+      </div>
+      <!-- //content -->
+		</div>
+    <!-- 비밀번호 변경 팝업 적용-->
+    <login-change-pw-popup 
+      v-if="open"  
+      :open="open"
+      :email="email"
+      :pwd="pwd"  
+      @on-change-open="onChangeOpen"
+    >
+	</section>
+</body>
+</html>
+<!-- 비밀번호 변경 팝업 html-->
+<template id="loginChangePwPopup">
+  <div class="layer-pop-wrap">
+    <div class="layer-pop-box midium">
+        <div class="pop-wrap">
+            <h1 class="blind">표시컨설팅 > 비밀번호변경 팝업</h1>
+            <header class="pop-header">
+                <div class="pop-header-title-wrap">
+                    <h3 class="pop-header-title">비밀번호 변경</h3>
+                    <button class="btn-pop-close js-pop-close" @click="onEmit">닫기</button>
+                </div>
+            </header>
+            <div class="pop-container">
+                <div class="pop-common-box">
+                    <div id="lay_find" class="page_find">
+                        <div class="section_inner">
+                            <div id="typeC" class="tab_con">
+                                <div class="txt_box">
+                                    <b>시스템에 처음으로 로그인하셨습니다.<br>비밀번호를 변경하여 주세요.</b>
+                                </div>
+                                <!-- 비밀번호찾기 폼 -->
+                                <form action="">
+                                    <fieldset>
+                                        <legend>비밀번호찾기 폼</legend>
+                                        <div class="form_con">
+                                            <div class="box">
+                                                <h4>비밀번호</h4>
+                                                <div class="input_wrap">
+                                                    <div class="input_box">
+                                                        <input type="password" id="passwd" name="passwd" v-model="passwd" ref="passwd" v-on:keyup.enter="focusPwd">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="box">
+                                                <h4>비밀번호 확인</h4>
+                                                <div class="input_wrap">
+                                                    <div class="input_box">
+                                                        <input type="password" id="repasswd" name="repasswd" v-model="repasswd" ref="repasswd" v-on:keyup.enter="focusRePwd">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+                                </form>
+                                <!-- //비밀번호찾기 폼 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pop-bottom">
+                <div class="pop-btn-box">
+                    <a href="" class="btn-pop-bottom" @click="onEmit">취소</a>
+                    <a href="" class="btn-pop-bottom" @click="seveNewPW">등록</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</template>

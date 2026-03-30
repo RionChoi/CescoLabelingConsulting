@@ -1,0 +1,77 @@
+plugins {
+	id 'org.springframework.boot' version '2.7.3'
+	id 'io.spring.dependency-management' version '1.0.13.RELEASE'
+	id 'java'
+	id 'war'
+}
+
+group = 'com.cesco'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+bootWar {
+	archiveFileName  = "app.war"
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+
+	// thymeleaf
+	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect'
+
+	// springboot
+	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	implementation 'org.apache.commons:commons-lang3:3.12.0'
+	implementation 'org.apache.commons:commons-compress:1.21'
+	implementation 'org.apache.commons:commons-io:1.3.2'
+
+	implementation 'com.alibaba:fastjson:1.2.83'
+	implementation 'cn.hutool:hutool-log:5.8.9'
+	implementation 'commons-codec:commons-codec:1.15'
+	// mybatis
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.2.0'
+	// mssql server
+	implementation 'com.microsoft.sqlserver:mssql-jdbc:8.4.1.jre11'
+
+	// lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	
+	// okhttp
+	implementation("com.squareup.okhttp3:okhttp:4.10.0")
+
+	// javax-mail
+	implementation 'javax.mail:mail:1.4.7'
+	implementation 'com.jcraft:jsch:0.1.55'
+
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	//db log lib
+	implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16'
+
+	implementation 'commons-net:commons-net:3.6'
+	// jackson lib
+	implementation 'com.konghq:unirest-objectmapper-jackson:3.13.10'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.co.acctMgt.mapper.AcctMgtMapper">    
+    
+    <!-- 계정 목록 -->
+    <select id="getAccUserList" parameterType="com.cesco.co.acctMgt.dto.AccSearchInfo" resultType="com.cesco.co.acctMgt.dto.AccUserInfoDTO">
+        <![CDATA[
+
+        SELECT A.USER_ID, A.USER_NM, A.CST_ID, A.CST_NM, A.USER_TP_CD, A.USER_REF_ID, A.EMAIL, A.TEL_NO,
+		        A.MPHONE_NO, A.FAX_NO, A.CST_TP_CD, A.USER_POSIT_NM, A.USER_DEPT_NM, A.USER_DEPT_NM_VIEW, A.STATUS, A.RGSTR_DT, 
+                A.RGSTR_NM, A.RGSTR_ID, A.MDFR_DT, A.MDFR_NM, A.MDFR_ID, A.CONSULT_CNT,
+                A.NOTICE1_YN, A.NOTICE2_YN, A.NOTICE3_YN, A.NOTICE4_YN
+        FROM (
+
+        SELECT USER_ID, USER_NM, CST_ID, CST_NM, USER_TP_CD, USER_REF_ID, EMAIL, TEL_NO,
+                        MPHONE_NO, FAX_NO, CST_TP_CD, USER_POSIT_NM, USER_DEPT_NM, ISNULL([dbo].FN_FS_GETSNAME1('9',USER_REF_ID), '') AS USER_DEPT_NM_VIEW , STATUS, RGSTR_DT, 
+                        [dbo].FN_FS_GETSNAME1('1',RGSTR_ID) as RGSTR_NM, RGSTR_ID, MDFR_DT, [dbo].FN_FS_GETSNAME1('1',MDFR_ID) as MDFR_NM, MDFR_ID,
+                        (SELECT ISNULL(COUNT(FS_CHAT_ID),0) FROM TB_FS_DTL_MEM B WHERE FS_CHAT_ID = USER_ID  AND FS_CHAT_YN = 'Y') AS CONSULT_CNT,
+                        NOTICE1_YN, NOTICE2_YN, NOTICE3_YN, NOTICE4_YN
+
+        FROM [CESCOFS].[dbo].[TB_FS_USER]
+        ) as A
+        ]]>
+        <if test='consult_cnt == "2"'>
+            <![CDATA[
+                WHERE A.CONSULT_CNT = 0
+            ]]>
+        </if>
+
+        <if test='consult_cnt != "2"'>
+            <![CDATA[
+                WHERE A.CONSULT_CNT >= #{consult_cnt}
+            ]]>
+        </if>
+
+        <if test='cst_id != ""'>
+            <![CDATA[
+            AND A.CST_ID = #{cst_id}
+            ]]>
+        </if>
+        <if test='user_nm != ""'>
+            <![CDATA[
+            AND A.USER_NM LIKE '%' + #{user_nm} + '%' 
+            ]]>
+        </if>
+        <if test='user_id != ""'>
+            <![CDATA[
+            AND A.USER_ID LIKE '%' + #{user_id} + '%' 
+            ]]>
+        </if>
+        <if test='start_date != ""'>
+            <![CDATA[
+            AND A.RGSTR_DT >= #{start_date}
+            ]]>
+        </if>
+        <if test='end_date != ""'>
+            <![CDATA[
+            AND A.RGSTR_DT <= #{end_date}
+            ]]>
+        </if>
+        <if test='cst_tp_cd != ""'>
+            <![CDATA[
+            AND A.CST_TP_CD = #{cst_tp_cd}
+            ]]>
+        </if>
+        <if test='status != ""'>
+            <![CDATA[
+            AND A.STATUS = #{status}
+            ]]>
+        </if>
+        <![CDATA[
+            ORDER BY RGSTR_DT DESC
+        ]]>
+
+    </select>
+    
+    <!-- 계정 생성 -->
+    <select id="getUserId" resultType="String">
+        SELECT [dbo].FN_FS_GETSEQUENCE ('TB_FS_USER_CD', 'FS', #{user_tp_cd}) AS 'user_id'
+    </select>
+
+    <!-- 메일 사용 가능 체크 -->
+    <select id="getUserEmailCnt" parameterType="String" resultType="int">
+        SELECT COUNT(EMAIL) FROM [CESCOFS].[dbo].[TB_FS_USER] WHERE EMAIL = #{email}
+    </select>
+
+    <!-- 본인 메일 체크 -->
+    <select id="getSelfUserEmailCnt" parameterType="String" resultType="int">
+        SELECT COUNT(EMAIL) FROM TB_FS_USER WHERE USER_ID = #{user_id} and EMAIL = #{email}
+    </select>
+
+    <!-- 소속회사 목록 -->
+    <select id="getComList" resultType="com.cesco.co.cusMgt.dto.CusInfoDTO">
+        SELECT CST_ID, CST_NM FROM [CESCOFS].[dbo].[TB_FS_CUST] WHERE STATUS = 'Y'
+    </select>
+
+    <!-- 참여 컨설팅 수 -->
+    <select id="getConsultCnt" resultType="int">
+        SELECT ISNULL(COUNT(FS_CHAT_ID),0) FROM [CESCOFS].[dbo].[TB_FS_DTL_MEM] B WHERE FS_CHAT_ID = #{user_id}  AND FS_CHAT_YN = 'Y'
+    </select>
+    
+    <!-- 비밀번호 초기화 -->
+    <update id="setPassReSet" parameterType="com.cesco.co.acctMgt.dto.AccUserInfoDTO">
+        UPDATE [CESCOFS].[dbo].[TB_FS_USER] SET PWD_INIT_YN = 'Y', PWD = #{pwd}, MDFR_DT = GETDATE(), MDFR_ID = #{mdfr_id} WHERE USER_ID = #{user_id}
+    </update>
+
+    <!-- 계정 정보 수정 -->
+    <update id="setUserInfoUpt" parameterType="com.cesco.co.acctMgt.dto.AccUserInfoDTO">
+    
+        UPDATE [CESCOFS].[dbo].[TB_FS_USER]
+        SET USER_NM = #{user_nm},
+	        CST_ID = #{cst_id},
+	        CST_NM = [dbo].FN_FS_GETSNAME1('8',#{cst_id}),
+            USER_TP_CD = #{user_tp_cd},
+            USER_REF_ID = #{user_ref_id},            
+            EMAIL = #{email},
+            TEL_NO = #{tel_no},
+            MPHONE_NO = #{mphone_no},
+            FAX_NO = #{fax_no},
+            CST_TP_CD = #{cst_tp_cd},
+            USER_POSIT_NM = #{user_posit_nm},
+            USER_DEPT_NM = #{user_dept_nm},
+            STATUS = #{status},
+            MDFR_DT = GETDATE(),
+            MDFR_ID = #{mdfr_id},
+            NOTICE1_YN = #{notice1_yn},
+            NOTICE2_YN = #{notice2_yn},
+            NOTICE3_YN = #{notice3_yn},
+            NOTICE4_YN = #{notice4_yn}
+        WHERE USER_ID = #{user_id}
+
+    </update>
+
+    <!-- 계정 정보 수정 -->
+    <insert id="setUserInfoIns" parameterType="com.cesco.co.acctMgt.dto.AccUserInfoDTO">
+    
+        INSERT INTO [CESCOFS].[dbo].[TB_FS_USER] ( USER_ID, USER_NM, CST_ID, CST_NM, USER_TP_CD, 
+                                            USER_REF_ID, PWD, EMAIL, TEL_NO, MPHONE_NO, FAX_NO, CST_TP_CD, 
+                                            USER_DEPT_NM, STATUS , RGSTR_DT, RGSTR_ID, MDFR_DT, MDFR_ID, SYS_ID, PWD_INIT_YN,
+                                            NOTICE1_YN, NOTICE2_YN, NOTICE3_YN, NOTICE4_YN)
+                            VALUES(#{user_id}, #{user_nm}, #{cst_id}, [dbo].FN_FS_GETSNAME1('8',#{cst_id}), #{user_tp_cd}, 
+                                #{user_ref_id}, #{pwd}, #{email}, #{tel_no}, #{mphone_no}, #{fax_no}, #{cst_tp_cd}, 
+                                #{user_dept_nm}, 'Y' , GETDATE(), #{rgstr_id}, GETDATE(), #{mdfr_id}, 'FS', 'Y',
+                                #{notice1_yn}, #{notice2_yn}, #{notice3_yn}, #{notice4_yn})
+    
+    </insert>   
+
+    <!-- 직원 정보 조회 -->
+    <select id="getCescoUserInfo" resultType="com.cesco.fs.consultMgt.dto.ConsultStaffDTO">
+        { CALL [dbo].[Usp_Fs_Get_Comm_Staff_Info] ('2', #{email}) }
+    </select>
+
+</mapper>

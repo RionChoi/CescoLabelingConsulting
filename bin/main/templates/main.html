@@ -1,0 +1,301 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+    // 화면명: 표시컨설팅 메인 화면(FSCCS10007)
+    // 작성자: gayeong
+    // 작성일: 2022.10.12
+	vue = new Vue({
+		el: '#app',
+		data: {
+            srchCodeParam : [
+                {
+                    cmm_cd: 'FS011',
+                    arr_nm: 'fs011List'
+                },
+                {
+                    cmm_cd: 'FS002',
+                    arr_nm: 'fs002List'
+                },
+                {
+                    cmm_cd: 'FS004',
+                    arr_nm: 'fs004List'
+                }
+            ],
+            fs011List: [],
+            fs002List: [],
+            fs004List: [],
+            familyList: [],
+            noticeList: [],
+            mainConsultingList: [],
+		},
+		methods: {
+            // get main 목록
+			getMainList: function() {
+                let url = '/fs/main/mainList';
+                let _this = this;
+                let msg = '';
+
+                axiosCall('get', url, {}, function(res){
+                    if(res.data.length != 0){
+                        _this.noticeList = res.data.noticeList;
+                        _this.mainConsultingList = res.data.mainConsultingList;
+                        _this.drawTable();
+                    }else{
+                        console.log("데이터가 존재하지 않습니다.");
+                    }
+                }, msg);
+            },
+            // jqxgrid 생성 및 bind
+            drawTable: function() {
+                let _this = this;
+
+                // 공지사항
+                var notiSource = {  
+                    datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                    datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+                        { name: 'type_nm', type: 'string', value:'type_cd', values: { source: _this.fs011List.records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },         // 상태
+                        { name: 'noti_title', type: 'string' },      // 제목
+                        { name: 'assign_id', type: 'string' },       // 게시자
+                        { name: 'assign_nm', type: 'string' },       // 게시자명
+                        { name: 'read_cnt', type: 'string' },        // 조회수
+                        { name: 'start_date', type: 'string' },      // 작성일
+                        { name: 'complete_date', type: 'string' },   // 마감일
+                        { name: 'type_cd', type: 'string' },         // 상태
+                        { name: 'sys_id', type: 'string' },          // 시스템id
+                        { name: 'noti_seq', type: 'string' },        // 공지seq
+                    ],  
+                    localdata: _this.noticeList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+                    pagenum: 0,
+                    pagesize: 5,
+                    pager: function (pagenum, pagesize, oldpagenum) {
+                        // callback called when a page or page size is changed.
+                    }
+                };
+                
+                var notiDataAdapter = new $.jqx.dataAdapter(notiSource);  
+
+                $("#noticeGrid").jqxGrid({  
+                    width: '100%',
+                    // height: '234',
+                    autoHeight: true,
+                    source: notiDataAdapter,    //위에서 만든 dataAdapter
+                    sortable: true,
+                    filterable: true,
+                    columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+                    pageable: true,
+                    pagermode: 'simple',
+                    showrowlines: false,
+                    showcolumnlines: false,
+                    // showcolumnheaderlines: columnHeaderLine,
+                    columns: [                  // 각 컬럼값들의 대한 설정이다.
+                        {
+                            text: 'No', sortable: false, filterable: false, editable: false,
+                            groupable: false, draggable: false, resizable: false,
+                            datafield: '', columntype: 'number', width: 50, align:'center',
+                            cellsrenderer: function (row, column, value) {
+                                return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+                            }
+                        },
+                        { 
+                            text: '상태', datafield: 'type_cd', displayfield: 'type_nm', width: 120, align:'center',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var typeClass = rowdata.type_cd == '01' ? 'tag notice' : '';
+                                var typeMargin = rowdata.type_cd == '01' ? '5px' : '8px';
+                                return "<div style='text-align: center; margin-top: "+ typeMargin +";'><span class='"+ typeClass +"'>"+ value +"</span></div>";
+                            },
+                        },  
+                        { 
+                            text: '제목', datafield: 'noti_title', align:'left',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq};
+                                var html = "<div class='txt-l' style='margin-top:8px;'>"
+                                        + "<a href='#none' class='a-link' onClick='vue.movePage(\"1\", "+ JSON.stringify(param) +")'>"+ value +"</a>"
+                                        + "</div>"
+                                return html;
+                            },
+
+                        },  
+                        { text: '게시자', datafield: 'assign_nm', width: 120, align:'center', cellsalign:'center' },  
+                        { 
+                            text: '조회', datafield: 'read_cnt', width: 80, align:'center', cellsalign:'center',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                return "<div style='text-align: center; margin-top: 8px;'>"+ (value == '' ? "0" : value) +"</div>"; 
+                            },
+                        },  
+                        { text: '게시일', datafield: 'start_date', width: 120, align:'center', cellsalign:'center' },
+                        { 
+							text: '게시종료일', datafield: 'complete_date', width: 120, align:'center', cellsalign:'center',
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: center; margin-top: 8px;'>"+ (value == '99991231' ? '영구' : value) +"</div>";
+							},
+						},
+                    ]  
+                });
+
+                // 금일 완료 예정 컨설팅
+                var consultSource = {  
+                    datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                    datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+                        { name: 'cst_nm', type: 'string' },         // 컨설팅번호 / 고객사
+                        { name: 'prod_str_nm', type: 'string' },    // 제품명 / 식품유형
+                        { name: 'cst_mng_nm', type: 'string' },     // 고객담당자
+                        { name: 'receive_date', type: 'string' },   // 접수일시
+                        { name: 'fs_bill_yn', type: 'string' },     // 계산서 발행여부
+                        { name: 'fs_mng_nm', type: 'string' },      // 세스코담당자명
+                        { name: 'fs_mng_id', type: 'string' },      // 세스코담당자id
+                        { name: 'close_date', type: 'string' },     // 최종처리일시
+                        { name: 'prod_unit_nm', type: 'string', value:'prod_unit_cd', values:{ source: _this.fs002List.records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },   // 단가구분 (신규, 리뉴얼)
+                        { name: 'prod_unit_cd', type: 'string' },   // 단가구분
+                        { name: 'fs_status_nm', type: 'string', value:'fs_status_cd', values:{ source: _this.fs004List.records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },   // 진행상태
+                        { name: 'fs_status_cd', type: 'string' },   // 진행상태
+                        { name: 'mem_cnt', type: 'string' },        // chat 인원
+                        { name: 'fs_no', type: 'string' },          // 컨설팅번호
+                        { name: 'fs_seq', type: 'string' },         // 컨선팅번호순번
+
+                    ],  
+                    localdata: _this.mainConsultingList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+                    pagenum: 0,
+                    pagesize: 5,
+                    pager: function (pagenum, pagesize, oldpagenum) {
+                        // callback called when a page or page size is changed.
+                    }
+                };
+                
+                var consultDataAdapter = new $.jqx.dataAdapter(consultSource);  
+
+                $("#consultGrid").jqxGrid({  
+                    width: '100%',
+                    // height: '320',
+                    autoHeight: true,
+                    autorowheight: true,
+                    source: consultDataAdapter, //위에서 만든 dataAdapter
+                    sortable: true,
+                    filterable: true,
+                    columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+                    pageable: true,
+                    pagermode: 'simple',
+                    showrowlines: false,
+                    showcolumnlines: false,
+                    columns: [                  // 각 컬럼값들의 대한 설정이다.
+                        {
+                            text: 'No', sortable: false, filterable: false, editable: false,
+                            groupable: false, draggable: false, resizable: false,
+                            datafield: '', columntype: 'number', align:'center',
+                            cellsrenderer: function (row, column, value) {
+                                return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+                            }
+                        },
+                        { 
+                            text: '컨설팅번호 / 고객사', datafield: 'cst_nm', align:'left',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var param = {sys_id:rowdata.sys_id, fs_no:rowdata.fs_no, fs_seq:rowdata.fs_seq};
+                                var html = "<div class='col-consultant' style='text-align: left;margin: 6px 0px 0px 10px''>"
+                                        + "<span class='tag-circle'>"+ rowdata.prod_unit_nm +"</span>"
+                                        + "<span>"+ value +"</span><br>"
+                                        + "<a href='#none' class='a-link' onClick='vue.movePage(\"2\", "+ JSON.stringify(param) +")'>"+ rowdata.fs_no +"</a>";
+                                        + "</div>"
+
+                                return html;
+                            },
+                        },  
+                        { text: '제품명 / 식품유형', datafield: 'prod_str_nm', align:'left' },  
+                        { text: '담당자', datafield: 'cst_mng_nm', width: 120, align:'center', cellsalign:'center' },  
+                        { text: '접수일시', datafield: 'receive_date', width: 200, align:'center', cellsalign:'center' },  
+                        { text: '비용', datafield: 'fs_bill_yn', width: 100, align:'center', cellsalign:'center' },
+                        { 
+                            text: '세스코담당자', datafield: 'fs_mng_nm', width: 200, align:'center', cellsalign:'center',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var statusNm = rowdata.fs_status_nm == undefined ? "" : rowdata.fs_status_nm;
+                                var memCnt = rowdata.mem_cnt == '' ? "0" : rowdata.mem_cnt;
+                                var param = {userNm:value};
+                                var html = "<div class='txt-l'>"
+                                        + "<a href='#none' class='a-link' onClick='openCmmPopup(\"personSearchPopup\", \"userPopup\", "+ JSON.stringify(param) +")'>"+ value +"</a><br>"
+                                        + "<span class='tag blue' style='display:inline;'>"+ statusNm +"</span>"
+                                        + "<span class='tag' >참여자수 "+ memCnt +"</span></div>";
+
+                                return html;
+                            }
+                        },
+                        { text: '최종처리일시', datafield: 'close_date', width: 200, align:'center', cellsalign:'center' }
+                    ]  
+                });
+            },
+            // 페이지 이동
+            movePage: function(idx, param) {
+                let url = '';
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+                } else if(idx == '2') {
+                    url = '/consulting/consult/indicationCoslChat?';
+                } else {
+                    alert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                let paramStr = "";
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            }
+		},
+        mounted: function(){
+            let _this = this;
+            getCodeAdapterListForArrNm(_this.srchCodeParam, _this, _this.getMainList);
+            getCodeListForArrNm([{cmm_cd: 'FS026', arr_nm: 'familyList'}], _this, selectBoxToggle());
+        },
+	})
+});
+
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app" v-cloak>
+		<!-- content -->
+        <div class="page-content">
+            <div class="clear mgb10">
+                <div class="fr">
+                    <div class="list-select-box Family">
+                        <a href="#" class="btn-select"><span>Family Site</span>
+                        </a>
+                        <ul class="list-select">
+                            <li v-for="(item, index) in familyList" v-if="item.etc_cd3 == 'FS'" :value="item.cmm_dtl_cd" >
+                                <a :href="item.etc_cd1" target="_blank"><span>{{item.cmm_dtl_nm}}</span></a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="page-box">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">공지사항</h3></div>
+                    <div class="fr">
+                        <button class="btn-txt" @click="movePage('0')" >더보기</button>
+                    </div>
+                </div>
+                <div id="noticeGrid">
+                </div>
+            </div>
+            <div class="page-box">
+                <h3 class="content-title">금일 완료 예정 표시컨설팅</h3>
+                <div id="consultGrid">
+                </div>
+            </div>
+        </div>
+        <!-- //content -->
+        <div id="userPopup"></div>
+	</section>		
+</body>
+</html>

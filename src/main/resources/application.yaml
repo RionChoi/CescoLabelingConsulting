@@ -1,0 +1,106 @@
+#spring 기본설정
+spring:
+  jmx:
+    enabled: false
+  datasource:
+    driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+    # 임시 URL
+    # url: jdbc:log4jdbc:sqlserver://devdb.cesco.biz:11433;DatabaseName=CESCOFS;
+    url: jdbc:log4jdbc:sqlserver://127.0.0.1:1433;DatabaseName=master;
+    username: sa
+    password: navy0311@#
+    hikari:
+      minimumIdle: 2
+      maximumPoolSize: 10
+      idleTimeout: 30000
+      poolName: maindb-pool
+      maxLifetime: 2000000
+      connectionTimeout: 30000
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: navycuicool@yahoo.com
+    password: navy0311@#
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  servlet:
+    multipart: 
+      maxFileSize: 500MB
+      maxRequestSize: 500MB
+      location: D:/labelingconsulting/upload
+server:  
+  servlet:    
+    session:      
+      timeout: 1800
+mybatis:
+  mapper-locations: mybatis/mapper/**/*.xml
+
+
+#============================================================================
+# LOGGING
+#============================================================================#
+logging:
+   pattern:
+      console: '%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%4line]){magenta} %clr(%-40.40logger{39}){cyan} %clr(:){red} %m%n%wEx'
+   level:
+      root: info
+      aicluster: debug
+      jdbc:
+         resultset: error
+         audit: error
+
+#============================================================================
+# SFTP Client Setting
+#============================================================================
+# sftp:
+#   client:
+#     host: 112.169.182.196
+#     port: 22
+#     protocol: sftp 
+#     username: fsccs
+#     password: Ces@Fs#CCS!2310
+#     root: /fsccs/ftp/fsftp/
+#     rootHc: /fsccs/ftp/hcftp/
+#     sessionStrictHostKeyChecking: no
+#     sessionConnectTimeout: 15000
+#     channelConnectedTimeout: 15000
+
+sftp:
+   client:
+      protocol: sftp
+      host: 127.0.0.1
+      port: 22
+      username: choi
+      password: navy0311@#
+      root: /Users/choi/upload/
+      rootHc: /Users/choi/sftpfile
+      sessionStrictHostKeyChecking: no
+      sessionConnectTimeout: 15000
+      channelConnectedTimeout: 15000
+
+#============================================================================
+# FTP dev 정보
+#============================================================================#
+ftpip: 112.169.182.196
+ftpid: fsccs
+ftppwd: Ces@Fs#CCS!2310
+ftpport: 22
+ftpdir: /fsccs/ftp/fsftp
+ftpdirhc: /fsccs/ftp/hcftp   
+
+#============================================================================#
+# E-FORM 
+#============================================================================#
+
+eformLoc: https://deveform.cesco.co.kr
+eform.crf.dir: /ecm/eform/
+#ftpip: kftc.cesco.biz
+#ftpid: kftcftp
+#ftppwd: Cesco@Ftp#3019
+#ftpport: 38383
+#ftpdir: Evidence
+
