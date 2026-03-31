@@ -1,0 +1,139 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#appPop',
+		data: {
+
+		},
+		methods: {
+
+			popClose : function(){
+                $("#popDiv").hide();
+            }
+			
+		}
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="appPop"  v-cloak>
+		<div class="page-head">
+			<div class="layer-pop-wrap">
+				<div class="layer-pop-box large">
+					<div class="pop-wrap">
+						<h1 class="blind">공지사항 > 공지사항 수정 팝업</h1>
+						<header class="pop-header">
+							<div class="pop-header-title-wrap">
+								<h3 class="pop-header-title">공지사항 수정</h3>
+								<button class="btn-pop-close js-pop-close" @click="popClose">닫기</button>
+							</div>
+						</header>
+						<div class="pop-container">
+							<div class="pop-common-box">
+								<div class="mgt30">
+									<table class="tb-view-01">
+										<colgroup><col width="150px"><col width=""></colgroup>
+										<tbody>
+											<tr>
+												<th>제목</th>
+												<td>
+													<div class="flex-auto-front">
+														<div>
+															<label class="check mgr20">
+																<input type="checkbox">
+																<span class="ico"></span>
+																<span class="txt">공지</span>
+															</label>
+														</div>
+														<div>
+															<input type="text" class="full" placeholder="담당자명을 입력하세요">
+														</div>
+													</div>
+												</td>
+											</tr>
+											<tr>
+												<th>게시기간</th>
+												<td>
+													<div class="flex-auto-front">
+														<div>
+															<label class="check mgr20">
+																<input type="checkbox">
+																<span class="ico"></span>
+																<span class="txt">영구</span>
+															</label>
+														</div>
+														<div>
+															<div class="calendar-wrap single">
+																<span class="calendar-box"><input type="text" class="calendarDate_start"></span>
+															</div>
+														</div>
+													</div>
+												</td>
+											</tr>
+											<tr>
+												<th>파일 찾아보기</th>
+												<td>
+													<div class="file-upload-wrap">
+														<div class="file-upload">
+															<input type="file" id="file_name" class="upload-hidden">
+															<label for="file_name"><i></i>파일첨부</label>
+														</div>
+													</div>
+													<div class="mgt10">
+														<table class="tb-list-mini">
+															<colgroup><col width=""><col width="100px"><col width="60px"></colgroup>
+															<thead>
+																<tr>
+																	<th>파일명</th>
+																	<th>파일크기</th>
+																	<th></th>
+																</tr>
+															</thead>
+															<tbody>
+																<tr>
+																	<td><a href="" class="a-link-file">photo_2021-12-21_15-34-35.jpg</a></td>
+																	<td class="txt-r">2MB</td>
+																	<td class="txt-c"><a href="#" class="btn-del-mini">삭제</a></td>
+																</tr>
+																<tr>
+																	<td><a href="" class="a-link-file">photo_2021-12-21_15-34-35.jpg</a></td>
+																	<td class="txt-r">2MB</td>
+																	<td class="txt-c"><a href="#" class="btn-del-mini">삭제</a></td>
+																</tr>
+															</tbody>
+														</table>
+													</div>
+												</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+								<div class="mgt10" style="min-height:500px;">
+									Editor 영역
+								</div>
+							</div>
+						</div>
+						<div class="pop-bottom">
+							<div class="pop-btn-box">
+								<a href="" class="btn-pop-bottom" @click="popClose">취소</a>
+								<a href="" class="btn-pop-bottom">게시</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>	    
+</div>
+</body>
+</html>

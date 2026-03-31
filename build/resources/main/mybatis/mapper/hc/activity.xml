@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.hc.main_hc.mapper.MainMapper_hc">
+
+
+
+    <!-- 수행일지 -->
+    <select id="getActivityRecord" parameterType="com.cesco.hc.main_hc.dto.ActivityRecordDto" resultType="com.cesco.hc.main_hc.dto.ActivityRecordDto">
+      { CALL CESCOFS.dbo.Usp_Hc_Get_ActivityRecord
+              ( #{sys_id},
+                #{fs_no},
+                #{fs_seq},
+                #{md_day},
+                #{user_id}
+      )}
+    </select>
+    <!-- 수행일지 등록-->
+    <insert id="setActivityRecord" parameterType="com.cesco.hc.main_hc.dto.ActivityRecordSetDto">
+       {CALL CESCOFS.dbo.Usp_Hc_Set_ActivityRecord
+       (         #{sys_id}
+                ,#{fs_no}
+                ,#{md_day}
+                ,#{md_status_cd}
+                ,#{md_date}
+                ,#{con_text11}
+                ,#{con_text12}
+                ,#{con_text21}
+                ,#{con_text22}
+                ,#{con_text31}
+                ,#{con_text32}
+                ,#{con_text41}
+                ,#{con_text42}
+                ,#{cst_mng_id}
+                ,#{cst_mng_sig_yn}
+                ,#{cst_mng_sig_date}
+                ,#{fs_mng_id}
+                ,#{fs_mng_sig_yn}
+                ,#{fs_mng_sig_date}
+                ,#{atch_nm}
+                ,#{atch_size}
+                ,#{atch_ref_id}
+                ,#{url}
+                ,#{org_file_nm}
+                ,#{ser_file_nm}
+                ,#{status}
+                ,#{rgstr_id}
+                ,#{rgstr_dt}
+                ,#{mdfr_id}
+                ,#{mdfr_dt}
+                ,#{cst_mng_sign}
+                ,#{fs_mng_sign}
+      )}
+    </insert>
+   
+   
+<!-- 관리자에게 세스톡 보내기 -->
+    <insert id="setMsgAlarm" parameterType="com.cesco.hc.main_hc.dto.ActivityRecordDto">
+      {CALL CESCOFS.dbo.Usp_Hc_Set_ActivityRecord_Alarm(
+          #{fs_mng_id}
+        , #{cst_mng_nm}
+        , #{contents}
+      )} 
+    </insert>
+</mapper>

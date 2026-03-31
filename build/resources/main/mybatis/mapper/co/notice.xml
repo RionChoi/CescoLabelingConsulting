@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.co.notice.mapper.NoticeMgtMapper">
+    <!-- select -->
+    <!-- 공지사항 목록 -->
+    <select id="getNoticeList" resultType="com.cesco.co.notice.dto.NoticeDto" parameterType="com.cesco.co.notice.dto.NoticeMgtDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Mgt_List] (
+            #{sys_id}, #{srch_start_date}, #{srch_end_date}, #{srch_noti_title}, #{noti_seq}
+        )}
+    </select>
+
+    <!-- 공지사항 정보 -->
+    <select id="getNoticeInfo" resultType="com.cesco.co.notice.dto.NoticeDto" parameterType="com.cesco.co.notice.dto.NoticeMgtDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Mgt_Info] (
+            #{sys_id}, #{noti_seq}
+        )}
+    </select>
+
+    <!-- 공지사항 첨부파일 리스트 -->
+    <select id="getNoticeAttachList" resultType="com.cesco.co.notice.dto.NoticeAttachDto" parameterType="com.cesco.co.notice.dto.NoticeMgtDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Attach_List] (
+            #{sys_id}, #{noti_seq}
+        )}
+    </select>
+
+    <!-- 공지사항 댓글 리스트 -->
+    <select id="getNoticeDtlList" resultType="com.cesco.co.notice.dto.NoticeDtlDto" parameterType="com.cesco.co.notice.dto.NoticeMgtDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Dtl_List] (
+            #{sys_id}, #{noti_seq}
+        )}
+    </select>
+    
+    <!-- 공지사항 게시글 조회 현황 -->
+    <select id="getNoticeReadList" resultType="com.cesco.co.notice.dto.NoticeReadDto" parameterType="com.cesco.co.notice.dto.NoticeReadDto" statementType="CALLABLE">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Read_List] (
+            #{sys_id}, #{noti_seq}, #{cnt, mode=OUT, jdbcType=INTEGER, javaType=int}
+        )}
+    </select>
+
+    <!-- 공지사항 파일 다운로드 정보 -->
+    <select id="getAttachDownloadInfo" resultType="com.cesco.co.notice.dto.NoticeAttachDto" parameterType="com.cesco.co.notice.dto.NoticeAttachDto">
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Get_Notice_Attach_Info] (
+            #{ser_file_nm}
+        )}
+    </select>
+
+
+    <!-- insert -->
+    <!-- 공지사항 댓글 저장 -->
+    <insert id="setNoticeDtlInfo" parameterType="com.cesco.co.notice.dto.NoticeDtlDto">
+        INSERT INTO [dbo].TB_FS_NOTI_DTL
+             ( SYS_ID
+             , NOTI_SEQ
+             , NOTI_REP_ID
+             , NOTI_REP_SEQ
+             , NOTI_REP_REF_SEQ
+             , CONTENTS
+             , STATUS
+             , RGSTR_ID
+             , RGSTR_DT
+             , MDFR_ID
+             , MDFR_DT
+             , SSMM)
+        VALUES
+             ( #{sys_id}
+             , #{noti_seq}
+             , #{noti_rep_id}
+             , [dbo].FN_FS_GETSEQUENCE('TB_FS_NOTI_REP_SEQ', #{sys_id}, #{noti_seq})
+             , #{noti_rep_ref_seq}
+             , #{contents}
+             , 'Y'
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , '')
+    </insert>
+
+    <!-- 공지사항 등록 저장 -->
+    <insert id="setNewNoticeInfo" parameterType="com.cesco.co.notice.dto.NoticeDto">
+        INSERT INTO [dbo].TB_FS_NOTI_MST
+             ( SYS_ID
+             , NOTI_SEQ
+             , TYPE_CD
+             , PRIORITY_CD
+             , NOTI_TITLE
+             , NOTI_CONTENTS
+             , ASSIGN_DATE
+             , START_DATE
+             , COMPLETE_DATE
+             , ASSIGN_ID
+             , REP_YN
+             , STATUS
+             , RGSTR_ID
+             , RGSTR_DT
+             , MDFR_ID
+             , MDFR_DT
+             , SSMM
+             , NOTI_CMM_YN)
+        VALUES
+             ( #{sys_id}
+             , [dbo].FN_FS_GETSEQUENCE('TB_FS_NOTI_SEQ', #{sys_id}, '')
+             , #{type_cd}
+             , #{priority_cd}
+             , #{noti_title}
+             , #{noti_contents}
+             , CONVERT(CHAR(8), GETDATE(), 112)
+             , CONVERT(CHAR(8), GETDATE(), 112)
+             , #{complete_date}
+             , #{assign_id}
+             , 'Y'
+             , 'Y'
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , #{ssmm}
+             , #{noti_cmm_yn})
+        <selectKey resultType="String" keyProperty="noti_seq" order="AFTER">
+            SELECT NOTI_SEQ 
+              FROM [dbo].TB_FS_NOTI_MST 
+             WHERE SYS_ID = #{sys_id}
+               AND NOTI_SEQ = [dbo].FN_FS_GETSEQUENCE('TB_FS_NOTI_SEQ', #{sys_id}, '') -1
+        </selectKey>
+    </insert>
+
+    <!-- 공지사항 파일 저장 -->
+    <insert id="setNoticeAttachInfo" parameterType="com.cesco.co.notice.dto.NoticeAttachDto">
+        INSERT INTO [dbo].TB_FS_NOTI_ATTACH
+             ( SYS_ID
+             , NOTI_SEQ
+             , ATCH_SEQ
+             , ATCH_NM
+             , ATCH_SIZE
+             , ATCH_REF_ID
+             , URL
+             , ORG_FILE_NM
+             , SER_FILE_NM
+             , STATUS
+             , RGSTR_ID
+             , RGSTR_DT
+             , MDFR_ID
+             , MDFR_DT
+             , SSMM)
+        VALUES
+             ( #{sys_id}
+             , #{noti_seq}
+             , [dbo].FN_FS_GETSEQUENCE('TB_FS_NOTI_ATTACH_SEQ', #{sys_id}, #{noti_seq})
+             , #{atch_nm}
+             , #{atch_size}
+             , #{atch_ref_id}
+             , #{url}
+             , #{org_file_nm}
+             , #{ser_file_nm}
+             , #{status}
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , #{ssmm})
+    </insert>
+
+    <!-- 공지사항 history set -->
+    <insert id="setNoticeRead" parameterType="com.cesco.co.notice.dto.NoticeReadDto">
+        INSERT INTO [dbo].TB_FS_NOTI_READ
+             ( SYS_ID
+             , NOTI_SEQ
+             , READ_DT
+             , READ_ID
+             , STATUS
+             , RGSTR_ID
+             , RGSTR_DT
+             , MDFR_ID
+             , MDFR_DT
+             , SSMM)
+        VALUES
+             ( #{sys_id}
+             , #{noti_seq}
+             , GETDATE()
+             , #{read_id}
+             , 'Y'
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , #{ssmm})
+    </insert>
+
+    <!-- update -->
+    <!-- 공지사항 수정 저장 -->
+    <update id="setModiNoticeInfo" parameterType="com.cesco.co.notice.dto.NoticeDto">
+        UPDATE [dbo].TB_FS_NOTI_MST
+           SET TYPE_CD       = #{type_cd}
+             , PRIORITY_CD   = #{priority_cd}
+             , NOTI_TITLE    = #{noti_title}
+             , NOTI_CONTENTS = #{noti_contents}
+             , COMPLETE_DATE = #{complete_date}
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+             , SSMM          = #{ssmm}
+             , NOTI_CMM_YN   = #{noti_cmm_yn}
+         WHERE 1=1
+           AND SYS_ID        = #{sys_id}
+           AND NOTI_SEQ      = #{noti_seq}
+    </update>
+
+    <!-- 공지사항 파일 삭제(status = 'N') -->
+    <update id="setDelNoticeAttach" parameterType="com.cesco.co.notice.dto.NoticeAttachDto">
+        UPDATE [dbo].TB_FS_NOTI_ATTACH
+           SET STATUS        = 'N'
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+         WHERE 1=1
+           AND SYS_ID        = #{sys_id}
+           AND NOTI_SEQ      = #{noti_seq}
+        <if test="atch_seq != null and atch_seq != ''">
+           AND ATCH_SEQ      = #{atch_seq}
+        </if>
+    </update>
+
+
+    <!-- 공지사항 삭제(status = 'N') -->
+    <update id="setDelNoticeList" parameterType="com.cesco.co.notice.dto.NoticeDto">
+        UPDATE [dbo].TB_FS_NOTI_MST
+           SET STATUS        = 'N'
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+         WHERE 1=1
+           AND SYS_ID        = #{sys_id}
+           AND NOTI_SEQ      = #{noti_seq}
+    </update>
+
+    <!-- 공지사항 게시종료 -->
+    <update id="setCmpltNoticeList" parameterType="com.cesco.co.notice.dto.NoticeDto">
+        <!-- UPDATE [dbo].[TB_FS_NOTI_MST]
+           SET [MDFR_ID]       = #{mdfr_id}
+             , [MDFR_DT]       = GETDATE()
+             , [COMPLETE_DATE] = CONVERT(CHAR(8), GETDATE(), 112)
+         WHERE 1=1
+           AND [SYS_ID]        = #{sys_id}
+           AND [NOTI_SEQ]      = #{noti_seq} -->
+        {CALL [CESCOFS].[dbo].[Usp_Fs_Set_Cmplt_Notice] (
+            #{sys_id}, #{noti_seq}, #{mdfr_id}
+        )}
+    </update>
+    <!-- 수행일지 -->
+    <select id="getActivityRecord" parameterType="com.cesco.hc.main_hc.dto.ActivityRecordDto">
+        {CALL [CESCOFS].[dbo].[Usp_Hc_Get_ActivityRecord] (
+            #{sys_id}
+        )}
+    </select>
+</mapper>

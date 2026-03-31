@@ -1,0 +1,59 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/comm_default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#appPop',
+		data: {
+
+		},
+		methods: {
+
+			popClose : function(){
+                $("#popDiv").hide();
+            }
+			
+		}
+	})
+});
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="appPop"  v-cloak>
+		<div class="page-head">
+			<div class="layer-pop-wrap">
+				<div class="layer-pop-box midium">
+					<div class="pop-wrap">
+						<h1 class="blind">서비스 내역서 비고</h1>
+						<header class="pop-header">
+							<div class="pop-header-title-wrap">
+								<h3 class="pop-header-title">서비스 내역서 비고</h3>
+								<button @click="popClose" class="btn-pop-close js-pop-close">닫기</button>
+							</div>
+						</header>
+						<div class="pop-container">
+							<div class="pop-common-box">
+								<textarea cols="30" rows="10" class="full ht250"></textarea>
+							</div>
+						</div>
+						<div class="pop-bottom">
+							<div class="pop-btn-box">
+								<a href="#" @click="popClose" class="btn-pop-bottom js-pop-close">취소</a>
+								<a href="" class="btn-pop-bottom">등록</a>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>	    
+</div>
+</body>
+</html>

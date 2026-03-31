@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+
+<head>
+<title>HACCP컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<!-- <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
+<script th:inline="javascript" type="text/javascript">
+ 
+ var vue
+$(document).ready(function(){
+    
+	vue = new Vue({
+		el: '#app',
+		data: {
+            sys_id: 'HC',
+            srchCodeParam : [
+                {
+                    sys_cd: 'FS',
+                    cmm_cd: 'FS011',
+                    arr_nm: 'fs011List'
+                },
+                {
+                    sys_cd: 'FS',
+                    cmm_cd: 'FS002',
+                    arr_nm: 'fs002List'
+                },
+                {
+                    sys_cd: 'FS',
+                    cmm_cd: 'FS004',
+                    arr_nm: 'fs004List'
+                }
+            ],
+            fs011List: [],
+            fs002List: [],
+            fs004List: [],
+            noticeList: [],
+            familyList:[],
+            paramsdata  : { 
+                }
+		},
+		methods: {
+            // get main 목록
+			getMainList : function() {
+                let url = '/main/main_hc/hcmain';
+                let _this = this;
+                let msg = '';
+                let param = {};
+                param.sys_id = _this.sys_id;
+
+                axiosCall('get',url, param, function(res){
+                    if(res.data.length != 0){
+                        _this.noticeList = res.data.noticeList;
+                        _this.drawTable();
+                        console.log(_this.noticeList);
+                    }else{
+                        console.log("데이터가 존재하지 않습니다.");
+                    }
+                }, msg);
+                
+            },
+            // get 공지사항 목록
+			getNoticeList : function() {
+				let url = '/api/notice/getNoticeList';
+				let _this = this;
+				let msg = '';
+				let param = {};
+				param.srch_start_date = _this.startDate.replaceAll('-', '');
+				param.srch_end_date = _this.endDate.replaceAll('-', '');
+				param.srch_noti_title = _this.notiTitle;
+                console.log("공지사항테스트");
+				axiosCall('get', url, param, function(res){
+                    console.log("공지사항테스트2");
+					_this.noticeList = res.data;
+					_this.drawTable();
+				}, msg);
+			},
+            // jqxgrid 생성 및 bind
+            drawTable : function() {
+                let _this = this;
+
+                // 공지사항
+                var notiSource = {  
+                    datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+                    datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.  
+                        { name: 'type_nm', type: 'string', value:'type_cd', values: { source: _this.fs011List.records, value: 'cmm_dtl_cd', name: 'cmm_dtl_nm' } },         // 상태
+                        { name: 'noti_title', type: 'string' },      // 제목
+                        { name: 'assign_id', type: 'string' },       // 게시자
+                        { name: 'assign_nm', type: 'string' },       // 게시자명
+                        { name: 'read_cnt', type: 'string' },        // 조회수
+                        { name: 'start_date', type: 'string' },      // 작성일
+                        { name: 'complete_date', type: 'string' },   // 마감일
+                        { name: 'type_cd', type: 'string' },         // 상태
+                        { name: 'sys_id', type: 'string' },          // 시스템id
+                        { name: 'noti_seq', type: 'string' },        // 공지seq
+                    ],  
+                    localdata: _this.noticeList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+                    pagenum: 0,
+                    pagesize: 5,
+                    pager: function (pagenum, pagesize, oldpagenum) {
+                        // callback called when a page or page size is changed.
+                    }
+                };
+                
+                var notiDataAdapter = new $.jqx.dataAdapter(notiSource);  
+
+                $("#noticeGrid").jqxGrid({  
+                    width: '100%',
+                    height: '234',
+                    source: notiDataAdapter,    //위에서 만든 dataAdapter
+                    sortable: true,
+                    filterable: true,
+                    columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+                    pageable: true,
+                    pagermode: 'simple',
+                    showrowlines: false,
+                    showcolumnlines: false,
+                    // showcolumnheaderlines: columnHeaderLine,
+                    columns: [                  // 각 컬럼값들의 대한 설정이다.
+                        {
+                            text: 'No', sortable: false, filterable: false, editable: false,
+                            groupable: false, draggable: false, resizable: false,
+                            datafield: '', columntype: 'number', width: 50, align:'center',
+                            cellsrenderer: function (row, column, value) {
+                                return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+                            }
+                        },
+                        { 
+                            text: '상태', datafield: 'type_cd', displayfield: 'type_nm', width: 120, align:'center',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var typeClass = rowdata.type_cd == '01' ? 'tag notice' : '';
+                                var typeMargin = rowdata.type_cd == '01' ? '5px' : '8px';
+                                return "<div style='text-align: center; margin-top: "+ typeMargin +";'><span class='"+ typeClass +"'>"+ value +"</span></div>";
+                            },
+                        },  
+                        { 
+                            text: '제목', datafield: 'noti_title', align:'left',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var param = {sys_id:rowdata.sys_id, noti_seq:rowdata.noti_seq};
+                                var html = "<div class='txt-l' style='margin-top:8px;'>"
+                                        + "<a href='#none' class='a-link' onClick='vue.movePage(\"1\", "+ JSON.stringify(param) +")'>"+ value +"</a>"
+                                        + "</div>"
+                                return html;
+                            },
+
+                        },  
+                        { text: '게시자', datafield: 'assign_nm', width: 120, align:'center', cellsalign:'center' },  
+                        { 
+                            text: '조회', datafield: 'read_cnt', width: 80, align:'center', cellsalign:'center',
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                return "<div style='text-align: center; margin-top: 8px;'>"+ (value == '' ? "0" : value) +"</div>"; 
+                            },
+                        },  
+                        { text: '게시일', datafield: 'start_date', width: 120, align:'center', cellsalign:'center' },
+                        { text: '게시종료일', datafield: 'complete_date', width: 120, align:'center', cellsalign:'center' },
+                    ]  
+                });             
+            },
+            // 페이지 이동
+            movePage: function(idx, param) {
+                let url = '';
+
+                if(idx == '0') {
+                    url = '/notice/noticeList?';
+                } else if(idx == '1') {
+                    url = '/notice/noticeDetails?';
+                } else if(idx == '2') {
+                    url = '/consulting/consult/indicationCoslChat?';
+                } else if(idx == '3') { // 공통팝업예제 추후 삭제
+                    url = '/commPopup/popupCallTest?';
+                } else {
+                    alert('페이지 준비중입니다.');
+                    return;
+                }
+
+                // param data setting
+                let paramStr = "";
+                $.each(param, function(key, value){
+                    paramStr += (paramStr!=""? "&" : "") + key + "=" +  value;
+                });
+                
+                window.location = url + paramStr;
+            }
+		},
+        mounted: function(){
+            let _this = this;
+            console.log("테스트1-1");
+            getCodeAdapterListForArrNm(_this.srchCodeParam, _this, _this.getMainList);
+            getCodeListForArrNm([{cmm_cd: 'FS026', arr_nm: 'familyList'}], _this, selectBoxToggle());
+            console.log("테스트1-2");
+        },
+});
+})
+</script>
+</head>
+<body>
+    <section layout:fragment="content" id="app" v-cloak>
+        <div class="page-content">
+            <div class="page-box">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">HACCP컨설팅</h3></div>
+                    <div class="fr">
+                        <div class="list-select-box Family">
+                            <a href="#" class="btn-select"> <span>Family Site</span>
+                            </a>    
+                            <ul class="list-select">
+                                <li v-for="(item, index) in familyList" :value="item.cmm_dtl_cd">
+                                    <a :href="item.etc_cd1" target="_blank"><span>{{item.cmm_dtl_nm}}</span></a>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <ul class="hc-menu-wrap">
+                        <li>
+                            <a href="https://www.cescoacademy.co.kr" target="_blank">
+                                <div>
+                                    <h4>식품안전교육 <span>(HACCP, 위생용품 등)</span></h4>
+                                    <p>식약처 지정 HACCP 훈련기관(제10호)<br>및 위생용품 위생교육기관(제4호)</p>
+                                </div>
+                                <div><i class="ico-hc-01"></i></div>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="" target="_blank">
+                                <div>
+                                    <h4>시험분석 서비스</h4>
+                                    <p>국내 최고 수준의 전문시험 검사서비스<br>식품/축산물/건강기능식품/위생용품 등</p>
+                                </div>
+                                <div><i class="ico-hc-02"></i></div>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.cesco.co.kr/solution/service/alien" target="_blank">
+                                <div>
+                                    <h4>통합이물분석 서비스</h4>
+                                    <p>국내 유일, 이물전문 분석센터<br>30여가지 유형별 전문 분석 기법</p>
+                                </div>
+                                <div><i class="ico-hc-03"></i></div>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://mall.cesco.co.kr" target="_blank">
+                                <div>
+                                    <h4>환경위생 솔루션 <span>(세스케어)</span></h4>
+                                    <p>케미컬 솔루션과 클리닝 솔루션<br>맞춤형 친환경 환경위생용품 브랜드</p>
+                                </div>
+                                <div><i class="ico-hc-04"></i></div>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="page-box">
+                <div class="clear">
+                    <div class="fl"><h3 class="content-title">공지사항</h3></div>
+                    <div class="fr">
+                        <button class="btn-txt" @click="movePage('0')" >더보기</button>
+                    </div>
+                </div>
+                <div id="noticeGrid">
+                </div>             
+            </div>
+        </div>
+    </section>
+</body>
+</html>

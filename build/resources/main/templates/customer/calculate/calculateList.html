@@ -1,0 +1,858 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/default}">
+<head>
+<title>표시컨설팅</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1 minimum-scale=1" />
+<script th:inline="javascript" type="text/javascript">
+var vue
+$(document).ready(function(){
+	vue = new Vue({
+		el: '#app',
+		data: {
+			userId: [[${session.userId}]],
+			userTpCd: [[${session.userTpCd}]],
+			cstcd: [[${session.cstcd}]],
+			regPop: false,
+			editPop: false,
+			startDate: '',
+			endDate: '',
+			srchCstId: '',
+			srchTaxBillId: '',
+			srchBillYn: '',
+			srchContId: '',
+			btnDisable: false,
+			cstList: [],
+			billMngList: [],
+			contMngList: [],
+			ynList: [],
+			calculateData: {},
+			calculateRegList: [],
+			calculateList: [],
+			calculateDtlList:[],
+			editCltEstList: [], // 견적단가수정 list
+		},
+		methods: {
+			// 서비스견적서생성 팝업 닫기
+			closeRegPop: function(val) {
+                this.regPop = val;
+            },
+			// 서비스견적서생성 팝업 열기
+            openRegPop: function(val) {
+				let _this = this;
+
+				// validation check
+				if(_this.checkRegPopValidation()) {
+					this.regPop = val;
+				}
+            },
+			// 단가수정 팝업 닫기
+			closeEditPop: function(val) {
+				this.editPop = val;
+			},
+			// 단가수정 팝업 열기
+			openEditPop: function(val) {
+				let _this = this;
+
+				// validation check
+				if(_this.checkEditPopValidation()) {
+					_this.editPop = val;
+				}
+			},
+			// 검색 시작일자 change
+			onChangeStartDate: function(val) {
+				this.startDate = val;
+				this.getChangeComboList();
+			},
+			// 검색 종료일자 change
+			onChangeEndDate: function(val) {
+				this.endDate = val;
+				this.getChangeComboList();
+			},
+			// 기간 버튼 클릭
+			setPeriod: function(val) {
+				var periodDate = getPeriod(val);
+				this.startDate = periodDate.startDt;
+				this.endDate = periodDate.endDt;
+				this.getChangeComboList();
+			},
+			// 정산 목록
+			getCalculateList: function(type) {
+				let _this = this;
+
+				// 검색 필수 check
+				if(_this.checkSrchValidation()) {
+					let url = '/api/calculate/getCalculateList';
+					let msg = '';
+					let param = {};
+	
+					param.start_date = _this.startDate.replaceAll('-', '');
+					param.end_date = _this.endDate.replaceAll('-', '');
+					param.cst_id = _this.srchCstId;
+					param.tax_bill_id = _this.srchTaxBillId;
+					param.fs_bill_yn = _this.srchBillYn;
+					param.cont_id = _this.srchContId;
+	
+					axiosCall('get', url, param, function(res){
+						// 정산여부 = 'Y' 일때 견적단가수정, 서비스견적서 생성버튼 비활성화
+						_this.btnDisable = _this.srchBillYn == 'Y' ? true:false;
+						_this.calculateList = res.data;
+						_this.drawTable();
+	
+						// 조회버튼 클릭 시 하단 상세그리드 초기화(팝업에서 정산내역만 refresh)
+						if(type != undefined && type == 'srch') {
+							_this.calculateData = {};
+							_this.calculateDtlList = [];
+							_this.drawDtlTable();
+						}
+					}, msg);
+				}
+			},
+			// 정산 상세 목록
+			getCalculateDtlList: function() {
+				let _this = this;
+				let url = '/api/calculate/getCalculateDtlList';
+				let param = {
+					fs_no: _this.calculateData.fs_no
+				};
+
+				axiosCall('get', url, param, function(res){
+					_this.calculateDtlList = res.data;
+					_this.drawDtlTable();
+				});
+			},
+			// 정산 jqxGrid
+			drawTable: function() {
+				let _this = this;
+
+				// 정산대상 컨설팅 목록
+				var source = {  
+					datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+					datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+						{ name: 'sys_id', type: 'string' },              // 시스템id
+    					{ name: 'fs_no', type: 'string' },               // 컨설팅번호
+    					{ name: 'fs_seq', type: 'string' },              // 컨설팅번호순번
+    					{ name: 'est_seq', type: 'string' },             // 견적단가 seq
+    					{ name: 'cst_id', type: 'string' },              // 고객사id
+    					{ name: 'cst_nm', type: 'string' },              // 고객사명
+    					{ name: 'prod_nm', type: 'string' },             // 제품명 
+    					{ name: 'prod_str_nm', type: 'string' },         // 설탕/발효식품
+    					{ name: 'prod_nm1', type: 'string' },            // 
+    					{ name: 'prod_nm2', type: 'string' },            // 
+    					{ name: 'cst_mng_id', type: 'string' },          // 고객담당자
+    					{ name: 'cst_mng_nm', type: 'string' },          // 고객담당자명
+    					{ name: 'cst_mng_mobile', type: 'string' },      // 담당자연락처
+    					{ name: 'bill_cst_id', type: 'string' },         // 정산거래처 :  신청시 등록시 넣는다.
+    					{ name: 'bill_cst_nm', type: 'string' },         // 정산거래처명
+    					{ name: 'receive_date', type: 'string' },        // 접수일자
+    					{ name: 'prod_ser_cd', type: 'string' },         // 정기 비정정기 서비스구분  
+    					{ name: 'prod_ser_nm', type: 'string' },         // 서비스구분명
+    					{ name: 'prod_unit_cd', type: 'string' },        // 단가구분(의뢰구분)
+    					{ name: 'prod_unit_nm', type: 'string' },        // 의뢰구분
+    					{ name: 'tax_bill_id', type: 'string' },         // 정산담당자
+    					{ name: 'tax_bill_nm', type: 'string' },         // 정산담당자명
+    					{ name: 'tax_bill_email', type: 'string' },      // 정산담당자이메일
+    					{ name: 'tax_bill_tp_cd', type: 'string' },      // 세금계산서 발행구분
+    					{ name: 'fs_mng_id', type: 'string' },           // 세스코담당자
+    					{ name: 'fs_mng_nm', type: 'string' },           // 세스코담당자명
+						{ name: 'cont_id', type: 'string' },             // 계약담당자
+    					{ name: 'cont_nm', type: 'string' },             // 계약담당자명
+    					{ name: 'mdfr_dt', type: 'string' },             // 수정일시
+    					{ name: 'fs_bill_yn', type: 'string' },          // 세금계산서 발행구분(정산여부)
+    					{ name: 'fs_bill_no', type: 'string' },          // 청구번호
+    					{ name: 'est_tp_cd', type: 'string' },           // 견적금액구분
+    					{ name: 'est_tp_nm', type: 'string' },           // 견적금액구분명
+    					{ name: 'est_amt', type: 'string' },             // 견적금액
+    					{ name: 'est_samt', type: 'string' },            // 견적금액합
+    					{ name: 'fs_bill_nm', type: 'string' },          // 청구명
+    					{ name: 'tax_bill_make_date', type: 'string' },  // 견적서 생성일자
+    					{ name: 'est_mdfr_id', type: 'string' },         // 견적수정자
+    					{ name: 'est_mdfr_nm', type: 'string' },         // 견적수정자명
+    					{ name: 'est_mdfr_dt', type: 'string' },         // 견적수정일자
+    					{ name: 'est_ssmm', type: 'string' },            // 견적SSMM
+    					{ name: 'fs_status_cd', type: 'string' },        // 진행상태
+    					{ name: 'fs_status_nm', type: 'string' },        // 진행상태명
+    					{ name: 'mem_cnt', type: 'string' },             // 참여자수
+					],  
+					localdata: _this.calculateList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+					pagenum: 0,
+					pagesize: 10,
+					pager: function (pagenum, pagesize, oldpagenum) {
+						// callback called when a page or page size is changed.
+					}
+				};
+				
+				var dataAdapter = new $.jqx.dataAdapter(source);  
+
+				$("#calculateGrid").jqxGrid({  
+					width: '100%',
+					// height: '300',
+					autoheight: true, //높이설정(자동)
+					source: dataAdapter,    //위에서 만든 dataAdapter
+					sortable: true,
+					filterable: true,
+					columnsresize: true,        //column의 너비를 컨텐츠에 맞게 리사이징
+					pageable: true,
+					pagermode: 'simple',
+					showrowlines: false,
+                    showcolumnlines: false,
+					selectionmode: 'singlerow',
+					columnsheight: 60,
+					autorowheight: true,
+					editable: true,
+					columns: [                  // 각 컬럼값들의 대한 설정이다.
+						{ text: '', datafield: 'check', columntype: 'checkbox', width: 30 },
+						{
+							text: 'No', sortable: false, filterable: false, editable: false, groupable: false, draggable: false, resizable: false, datafield: '', columntype: 'number', width: 30, align:'center',
+							cellsrenderer: function (row, column, value) {
+								return "<div style='text-align: center; margin-top: 65%;'>" + (value + 1) + "</div>";
+							}
+						},
+						{text: '서비스견적서번호', datafield: 'fs_bill_no', width: 130, align:'center', editable: false},  
+						{ 
+							text: '컨설팅번호 / 고객사', datafield: 'cst_nm', align:'center', editable: false,
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var param = {sys_id:rowdata.sys_id, fs_no:rowdata.fs_no, fs_seq:rowdata.fs_seq};
+                                var html = "<div style='text-align: center; margin-top:8px;'>"
+                                        + "<a href='#none' class='a-link' onClick='vue.movePage(\"2\", "+ JSON.stringify(param) +")'>"+ rowdata.fs_no +"</a>/" + value
+                                        + "</div>"
+
+                                return html;
+                            },
+						}, 
+						{ 
+							text: '담당자 / 정산주체 / 접수일시 / 의뢰일시', datafield: 'cst_mng_nm', align:'center', cellsalign:'center', width: 130, editable: false,
+							renderer: function (defaultText, alignment, height) {
+								return '<div style="margin-top: 15px; margin-left: 12px;">담당자 / 정산주체<br>접수일시 / 의뢰일시</div>';
+							},
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var html = "<div style='text-align: center; margin-top:8px;'>"
+										 + "<div class='list-txt'>"
+										 + "<p><span>"+ value +"</span>/<span>"+ rowdata.bill_cst_nm +"</span></p>"
+										 + "<p class='small'>"+ rowdata.receive_date +"</p>"
+										 + "</div>"
+								return html; 
+							},
+						},
+						{ 
+							text: '정산여부 / 정산일', datafield: 'fs_bill_yn', width: 80, align:'center', cellsalign:'center', editable: false,
+							renderer: function (defaultText, alignment, height) {
+								return '<div style="margin-top: 15px; margin-left: 12px;">정산여부 /<br>정산일</div>';
+							},
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var html = "<div style='text-align: center; margin-top:8px;'>"
+										 + "<div class='list-txt'><p>"+ (value == 'Y' ? '정산' : '미정산') +"</p>"
+										 + "<p class='small'>"+ (value == 'Y' ? rowdata.tax_bill_make_date : '') +"</p></div>"
+										 + "</div>"
+								return html; 
+							},
+						},
+						{ 
+                            text: '세스코담당자', datafield: 'fs_mng_nm', width: 150, align:'center', cellsalign:'center', editable: false,
+                            cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+                                var html = "<div class='txt-l'><div class='list-txt'>"
+                                        + "<p><span>"+ value +"</span></p>"
+                                        + "<p><span class='tag blue'>"+ rowdata.fs_status_nm +"</span><span class='tag' >참여자수 "+ rowdata.mem_cnt +"</span></p>"
+										+ "</div></div>";
+
+                                return html;
+                            }
+                        },
+						{ text: '정산담당자', datafield: 'tax_bill_nm', width: 80, align:'center', cellsalign:'center', editable: false },  
+						{ text: '계산서발행이메일', datafield: 'tax_bill_email', width: 150, align:'center', cellsalign:'center', editable: false },
+						{ text: '계약담당자', datafield: 'cont_nm', width: 80, align:'center', cellsalign:'center', editable: false },  
+						{ text: '구분', datafield: 'est_tp_nm', width: 60, align:'center', cellsalign:'center', editable: false },
+						{ 
+							text: '견적단가', datafield: 'est_samt', width: 80, align:'center', cellsalign:'right', editable: false,
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: right; margin-top:8px;'>" + Number(value).toLocaleString() +"</div>"
+                            }
+						},
+						{ 
+							text: '최종처리일시', datafield: 'mdfr_dt', width: 100, align:'center', cellsalign:'center', editable: false,
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: center; margin-top: 8px;'>"+ value +"</div>";
+							},
+						},
+					]  
+				});
+
+				let pageNum = 0;
+				// 페이지 이동시 선택 초기화
+                $("#calculateGrid").off('pagechanging').on('pagechanging', function (event) {
+                    pageNum = event.args.pagenum
+                    $('#calculateGrid').jqxGrid('clearselection');
+                });
+
+				// row select 시 하단 상세 그리드 변경
+				$('#calculateGrid').on('rowselect', function (event) {
+					_this.calculateData = $('#calculateGrid').jqxGrid('getrowdata', args.rowindex);
+					_this.getCalculateDtlList();
+				});
+
+			},
+			// 정산대상 상세 jqxGrid
+			drawDtlTable: function() {
+				let _this = this;
+				var dtlSource = {  
+					datatype: "json", // json 형태의 데이터를 셋팅할 것이고. // array
+					datafields: [     // 각필의 이름과 타입은 datafields에 마찬가지로 json 형태이다.
+						{ name: 'sys_id', type: 'string' },     		// sys id
+						{ name: 'cst_id', type: 'string' },				// 고객사id
+						{ name: 'cst_nm', type: 'string' },				// 고객사명
+						{ name: 'fs_no', type: 'string' },				// 컨설팅번호
+						{ name: 'fs_seq', type: 'string' },				// 컨설팅번호순번
+						{ name: 'est_seq', type: 'string' },			// 견적단가번호순번
+						{ name: 'prod_unit_cd', type: 'string' },		// 의뢰구분
+						{ name: 'prod_unit_nm', type: 'string' },       // 의뢰구분명
+						{ name: 'prod_nm', type: 'string' },    		// 식품명
+						{ name: 'prod_tp_cust_nm', type: 'string' },    // 제품유형
+						{ name: 'prod_item', type: 'string' },          // 품목보고번호
+						{ name: 'est_amt', type: 'string' },			// 견적단가금액
+						{ name: 'est_ssmm', type: 'string' },			// 사유
+						{ name: 'est_mdfr_dt', type: 'string' },	    // 수정일
+						{ name: 'est_mdfr_nm', type: 'string' },		// 스장지
+					],  
+					localdata: _this.calculateDtlList, // 위에서 셋팅해놓은 data를 localdata에 담아준다.
+				};
+				
+				var dtlDataAdapter = new $.jqx.dataAdapter(dtlSource);  
+				
+				$("#calculateDtlGrid").jqxGrid({  
+					width: '100%',
+					// autowidth: true,
+					// height : '250',
+					autoheight: true,
+					source: dtlDataAdapter,     // 위에서 만든 	
+					sortable: true,
+					filterable: true,
+					columnsresize: true,        // column의 너비를 컨텐츠에 맞게 리사이징
+					selectionmode: 'singlerow',
+					showrowlines: false,
+					showcolumnlines: false,
+					editable: true,
+					// cell mouse hover
+					cellhover: function (element, pageX, pageY) {
+						// cell정보
+						var cellInfo = $('#calculateDtlGrid').jqxGrid('getcellatposition', pageX, pageY);
+						var cell = $(element).find("span.tooltip-txt").html(); // 툴팁html
+						
+						// cellInfo.column == datafield
+						if(cellInfo.column == 'est_ssmm' && cell && cell.trim().length > 0) {
+							var tooltipCell = $(element).find("i.ico-tooltip");   // 툴팁위치
+							var tooltipContent = "<div>"+ cell +"</div>";         // 툴팁내용
+
+							// 툴팁 적용
+							tooltipCell.jqxTooltip({ position: 'right', content: tooltipContent});
+						}
+					},
+					columns: [
+						{ text: '', datafield: 'check', columntype: 'checkbox', width: 40 },
+						{
+							text: 'No', sortable: false, filterable: false, editable: false,
+							groupable: false, draggable: false, resizable: false,
+							datafield: '', columntype: 'number', align:'center', width: 40,
+							cellsrenderer: function (row, column, value) {
+								return "<div style='text-align: center; margin-top: 8px;'>" + (value + 1) + "</div>";
+							}
+						},
+						{ text: '제품명', datafield: 'prod_nm', align:'center', cellsalign:'center', editable: false },
+						{ text: '식품유형', datafield: 'prod_tp_cust_nm', align:'center', cellsalign:'center', editable: false },
+						{ text: '품목보고번호', datafield: 'prod_item', align:'center', cellsalign:'center', editable: false },
+						{ text: '의뢰구분', datafield: 'prod_unit_nm', align:'center', cellsalign:'center', editable: false },
+						{ 
+							text: '견적단가', datafield: 'est_amt', align:'center', cellsalign:'right', editable: false,
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								return "<div style='text-align: right; margin-top:8px;'>" + Number(value).toLocaleString() +"</div>"
+                            }
+						},
+						{ 
+							text: '사유', datafield: 'est_ssmm', width: 200, align:'center', editable: false,
+							cellsrenderer: function(row, columnfield, value, defaulthtml, columnproperties, rowdata) {
+								var html = "";
+								if(rowdata.est_seq > 1 && value != null && value != '') {
+									html = "<div style='text-align: center;'><div class='tooltip-wrap'>"
+										 + "<i class='ico-tooltip'></i>"
+										 + "<span class='tooltip-txt'>"+ rowdata.est_mdfr_dt +' '+ rowdata.est_mdfr_nm +"<br>" + value + "</span>"
+										 + "</div></div>";
+								}
+
+                                return html;
+                            },
+						},
+					]  
+				});
+
+				// radio버튼처럼 check됨.
+				$("#calculateDtlGrid").on('cellbeginedit', function (event) {
+					var args = event.args;
+					var rowBoundIndex = args.rowindex;
+					var rowDatas = $("#calculateDtlGrid").jqxGrid('getrows');
+					for( var i = 0 ; i < rowDatas.length ; i++ ) {
+						if(rowDatas[i].check == true){
+							var rowIndex = $("#calculateDtlGrid").jqxGrid('getrowboundindex', i);
+							$("#calculateDtlGrid").jqxGrid('setcellvalue', rowIndex , 'check' , false);
+						}
+					}
+
+					$("#calculateDtlGrid").jqxGrid('setcellvalue', rowBoundIndex , 'check' , true);
+				});
+
+			},
+			// 검색 필수 check
+			checkSrchValidation: function() {
+				let _this = this;
+				// 필수값 체크
+				if(_this.srchBillYn == '' || _this.srchBillYn == undefined) {
+					cmmAlert('정산여부가 선택되지 않았습니다.');
+					return false;
+
+				} else {
+					if(_this.srchBillYn == 'N') {
+						if(_this.startDate == '' || _this.startDate == undefined) {
+							cmmAlert('접수 시작일자가 선택되지 않았습니다.');
+							return false;
+	
+						} else if(_this.endDate == '' || _this.endDate == undefined) {
+							cmmAlert('접수 종료일자가 선택되지 않았습니다.');
+							return false;
+	
+						} else if(_this.srchCstId == '' || _this.srchCstId == undefined) {
+							cmmAlert('고객사가 선택되지 않았습니다.');
+							return false;
+	
+						} else if(_this.srchTaxBillId == '' || _this.srchTaxBillId == undefined) {
+							cmmAlert('정산담당자가 선택되지 않았습니다.');
+							return false;
+	
+						// } else if(_this.srchContId == '' || _this.srchContId == undefined) {
+						// 	cmmAlert('계약담당자가 선택되지 않았습니다.');
+						// 	return false;
+						} 
+					}
+				}
+
+				return true;
+			},
+			// 견적서 생성 팝업 check
+			checkRegPopValidation: function() {
+				// 체크된 데이터
+				let checkedData = [];
+				let checkedFsNo = [];
+				var rowDatas = $("#calculateGrid").jqxGrid('getrows');
+				$.each(rowDatas, function(i, obj) {
+					if(obj.check == true){
+						checkedData.push(obj);
+						checkedFsNo.push({fs_no:obj.fs_no});
+					}
+				})
+
+				// 서비스견적서 생성 조건 : 같은 고객사, 같은 정산담당자끼리만 생성 가능.
+				var sameCstYn = 'Y';
+				var sameTaxBillId = 'Y';
+				$.each(checkedData, function(i, obj) {
+					if(i != 0 && checkedData[i-1].cst_id != obj.cst_id) {
+						sameCstYn = 'N';
+					}
+
+					if(i != 0 && checkedData[i-1].tax_bill_id != obj.tax_bill_id) {
+						sameTaxBillId = 'N';
+					}
+				})
+
+				if(sameCstYn == 'N') {
+					cmmAlert("같은 고객사만 서비스견적서생성이 가능합니다.");
+					return false;
+				}
+
+				if(sameTaxBillId == 'N') {
+					cmmAlert("같은 정산담당자만 서비스견적서생성이 가능합니다.");
+					return false;
+				}
+
+				// 선택 확인.
+				if(checkedData.length > 0) {
+					this.calculateRegList = checkedFsNo;
+
+				} else if(checkedData.length == 0) {
+					cmmAlert("체크박스가 선택되지 않았습니다.")
+					return false;
+				}
+
+				return true;
+			},
+			// 견적단가수정 팝업 check
+			checkEditPopValidation: function() {
+				// 정산대상 컨설팅 목록 rowselect여부
+				if(this.calculateData.fs_no == undefined) {
+					cmmAlert("정산대상 컨설팅 목록에서 행 선택 후 수정이 가능합니다.")
+					return false;
+				}
+
+				// 단가수정 : 로그인한 사용자와 세스코 담당자가 동일한 경우에만 가능.
+				if(this.calculateData.fs_mng_id != this.userId) {
+					cmmAlert("단가수정은 해당 컨설팅의 세스코 담당자만 가능합니다.")
+					return false;
+				}	
+
+				// 체크된 데이터
+				let checkedData = [];
+				var rowDatas = $("#calculateDtlGrid").jqxGrid('getrows');
+				for( var i = 0 ; i < rowDatas.length ; i++ ) {
+					if(rowDatas[i].check == true){
+						checkedData.push(rowDatas[i]);
+					}
+				}
+
+				// 선택 확인.
+				if(checkedData.length == 1) {
+					this.calculateData = checkedData[0];
+
+				} else if(checkedData.length > 1) {
+					cmmAlert("수정은 단일 체크 시에 만 가능합니다.")
+					return false;
+
+				} else if(checkedData.length == 0) {
+					cmmAlert("체크박스가 선택되지 않았습니다.")
+					return false;
+				}
+
+				return true;
+			},
+			getChangeComboList: function(val) {
+				var _this = this;
+				var params = [
+					// 고객사 combo list : param => cmm_cd:'cst', p_type:'01'or'02'.., arr_nm:'담을 array명'
+					{cmm_cd:'cst', p_type:'04', p_parm4:_this.startDate, p_parm5:_this.endDate, arr_nm:'cstList', comboType:'select'}
+
+					// 정산 담당자 combo list : param => cmm_cd:'mng', p_type:'01'or'02'.., arr_nm:'담을 array명'
+					, {cmm_cd:'mng', p_type:'03', p_parm4:_this.startDate, p_parm5:_this.endDate, arr_nm:'billMngList', comboType:'select'}
+
+					// 계약 담당자 combo list : param => cmm_cd:'mng', p_type:'01'or'02'.., arr_nm:'담을 array명'
+					, {cmm_cd:'mng', p_type:'07', p_parm4:_this.startDate, p_parm5:_this.endDate, arr_nm:'contMngList', comboType:'select'}
+				];
+
+				if(val != undefined && val == 'init') {
+					// YN : param => cmm_cd:'YN', arr_nm:'담을 array명'
+					var param = {cmm_cd:'YN', arr_nm:'ynList', comboType:'select'};
+					params.push(param);
+				}
+
+				getCodeListForArrNm(params, _this);
+			},
+			initDrawTables: function() {
+				this.drawTable();
+				this.drawDtlTable();
+			}
+		},
+		// comboList보다 먼저 세팅되어야 함.
+		created: function() {
+			var _this = this;
+			_this.setPeriod("currentMonth");
+		},
+		mounted: function() {
+			var _this = this;
+			_this.getChangeComboList('init');
+			_this.initDrawTables();
+		}
+	})
+});
+
+// 등록 팝업
+Vue.component('calculateRegPop', {
+	template: '#calculateRegPop',
+	props: ['regPop', 'calculateRegList'],
+	data() {
+		return {
+			ssmm:'',
+		}
+	},
+	methods: {
+		closePop(e) {
+			let _this = this;
+			// $emit : 부모컴포넌트로 자식 값 전달
+			_this.$emit("close-reg-pop",false)
+		},
+		setCalculateSvc: function() {
+			// 체크된 데이터
+			let _this = this;
+			let url = '/api/calculate/setCalculateSvc';
+			let param = {ssmm:_this.ssmm, calculateList:_this.calculateRegList};
+
+			axiosCall('post', url, param, function(res){
+				alert("등록되었습니다.")
+				_this.$parent.getCalculateList();
+				_this.closePop();
+			});
+		}
+	},
+	mounted: function (){
+	},
+});
+
+// 수정 팝업
+Vue.component('estmateEditPop', {
+	template: '#estmateEditPop',
+	props: ['editPop', 'calculateData'],
+	data() {
+		return {
+			prodUnitCd: this.calculateData.prod_unit_cd,
+			estAmt: this.calculateData.est_amt,
+			motiEstAmt: '',
+			ssmm: '',
+			calculateEstList:[],
+			codeList01:[],
+            }
+	},
+	methods: {
+		closePop(e) {
+			let _this = this;
+			// 자식 값 전달
+			_this.$emit("close-edit-pop",false);
+		},
+		// 견적단가 수정
+		setCalculateEst: function() {
+			// 체크된 데이터
+			let _this = this;
+			let url = '/api/calculate/setCalculateEst';
+			let param = {};
+			param.fs_no = _this.calculateData.fs_no;
+			param.fs_seq = _this.calculateData.fs_seq;
+			param.est_seq = _this.calculateData.est_seq;
+			param.prod_unit_cd = _this.prodUnitCd;
+			param.est_amt = _this.motiEstAmt;
+			param.est_ssmm = _this.ssmm;
+
+			axiosCall('post', url, param, function(res){
+				alert("수정되었습니다.")
+				_this.$parent.getCalculateList();
+				_this.$parent.getCalculateDtlList();
+				_this.closePop();
+			});
+		},
+		addComma: function(e) {
+			var val = (e.target.value).replace(/[^0-9]/g,"");
+			this.motiEstAmt = (val).replaceAll(',', '').replace(/(\d)(?=(?:\d{3})+(?!\d))/g, '$1,');
+			this.$forceUpdate();
+		},
+	},
+	mounted: function (){
+		var _this = this;
+		var param = [{cmm_cd:'FS002', arr_nm:'codeList01'}];
+		getCodeListForArrNm(param, _this);
+	},
+});
+
+// start date
+Vue.component('datePickerFrom', {
+	template: '<input type="text" class="calendarDate_start" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-start-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+// end date
+Vue.component('datePickerTo', {
+	template: '<input type="text" class="calendarDate_end" v-model="val" readonly/>',
+	props: ['val'],
+	mounted: function() {
+		drawDatePicker(this, 'on-change-end-date');
+	},
+	beforeDestroy: function(){
+		destroyDatePicker(this);
+	},
+	methods: {
+	}
+});
+
+</script>
+
+</head>
+<body>
+	<section layout:fragment="content" id="app"  v-cloak>
+		<!-- content -->
+		<div class="page-content" style="padding-bottom: 0px;">
+			<div class="page-box">
+				<div class="clear">
+					<h2 class="page-title fl">정산대상</h2>
+					<div class="fr">
+						<button class="btn-search" @click="getCalculateList('srch')"><i></i>조회</button>
+					</div>
+				</div>
+				<hr>
+				<div class="board-search mgt20">
+					<table>
+						<colgroup>
+							<col width="60px"><col width="25%"><col width="10%"><col width="">
+							<col width="10%"><col width=""><col width="10%"><col width="">
+						</colgroup>
+						<tbody>
+							<tr>
+								<th rowspan="2" class="valign-b th-pd">접수일</th>
+								<td rowspan="2" class="valign-b">
+									<div class="mini-btns">
+										<button @click="setPeriod('currentMonth')">당월</button>
+										<button @click="setPeriod('currentYear')">당해</button>
+										<button @click="setPeriod('oneMonth')">1개월</button>
+										<button @click="setPeriod('threeMonth')">3개월</button>
+										<button @click="setPeriod('sixMonth')">6개월</button>
+										<button @click="setPeriod('oneYear')">1년</button>
+									</div>
+									<div class="calendar-wrap">
+										<span class="calendar-box">
+											<date-picker-from name="startDate" type="text" id="startDate" size="12" title="정산 조회 시작일" 
+											:val="startDate" @on-change-start-date="onChangeStartDate"/>
+											<label for="startDate"></label>
+										</span>
+										<span class="dash">~</span>
+										<span class="calendar-box">
+											<date-picker-to name="endDate" type="text" id="endDate" size="12" title="정산 조회 종료일" 
+											:val="endDate" @on-change-end-date="onChangeEndDate"/>
+											<label for="endDate"></label>
+										</span>
+									</div>
+								</td>
+								<th>정산여부</th>
+								<td>
+									<select class="full" id="billYn" name="billYn" title="정산여부" v-model="srchBillYn">
+										<option v-for="(item, index) in ynList" :value="item.cmm_dtl_cd">
+											{{(item.cmm_dtl_nm == 'Y' ? '정산' : (item.cmm_dtl_nm == 'N' ? '미정산' : item.cmm_dtl_nm))}}
+										</option>
+									</select>
+								</td>
+								<th>고객사</th>
+								<td>
+									<select class="full" id="customer" name="customer" title="고객사선택" v-model="srchCstId">
+										<option v-for="(item, index) in cstList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<th>정산담당자</th>
+								<td>
+									<select class="full" id="taxBillId" name="taxBillId" title="정산담당자선택" v-model="srchTaxBillId">
+										<option v-for="(item, index) in billMngList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+									</select>
+								</td>
+								<th>계약담당자</th>
+								<td>
+									<select class="full" id="contId" name="contId" title="계약담당자선택" v-model="srchContId">
+										<option v-for="(item, index) in contMngList" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+									</select>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="page-box">
+				<div class="clear">
+					<div class="fl"><h3 class="content-title">정산대상 컨설팅 목록</h3></div>
+					<div class="fr">
+						<button class="btn-save" :style="(btnDisable ? 'color: #cccccc; border: 1px solid #ccc;' : '')" :disabled="btnDisable" @click="openRegPop(true)">서비스견적서생성</button>
+					</div>
+				</div>
+				<div id="calculateGrid">
+				</div>
+			</div>
+			<div class="page-box">
+				<div class="clear">
+					<div class="fl"><h3 class="content-title">정산대상 컨설팅 상세 목록</h3></div>
+					<div class="fr">
+						<button class="btn-save" :style="(btnDisable ? 'color: #cccccc; border: 1px solid #ccc;' : '')" :disabled="btnDisable" @click="openEditPop(true)">견적단가수정</button>
+					</div>
+				</div>
+				<div id="calculateDtlGrid">
+				</div>
+			</div>
+		</div>
+		<calculate-reg-pop v-if="regPop" :reg-pop="regPop" :calculate-reg-list="calculateRegList" @close-reg-pop="closeRegPop"></calculate-reg-pop>
+		<estmate-edit-pop v-if="editPop" :edit-pop="editPop" :calculate-data="calculateData" @close-edit-pop="closeEditPop"></estmate-edit-pop>
+		<!-- //content -->
+	</section>	    
+</div>
+</body>
+</html>
+<template id="calculateRegPop">
+	<div class="layer-pop-wrap">
+		<div class="layer-pop-box midium">
+			<div class="pop-wrap">
+				<h1 class="blind">서비스 견적서 비고</h1>
+				<header class="pop-header">
+					<div class="pop-header-title-wrap">
+						<h3 class="pop-header-title">서비스 견적서 비고</h3>
+						<button class="btn-pop-close js-pop-close" @click="closePop">닫기</button>
+					</div>
+				</header>
+				<div class="pop-container">
+					<div class="pop-common-box">
+						<textarea cols="30" rows="10" class="full ht250" v-model="ssmm"></textarea>
+					</div>
+				</div>
+				<div class="pop-bottom">
+					<div class="pop-btn-box">
+						<a href="#" class="btn-pop-bottom js-pop-close" @click="closePop">취소</a>
+						<a href="#" class="btn-pop-bottom" @click="setCalculateSvc">등록</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
+<template id="estmateEditPop">
+	<div class="layer-pop-wrap">
+		<div class="layer-pop-box midium">
+			<div class="pop-wrap">
+				<h1 class="blind">단가 수정</h1>
+				<header class="pop-header">
+					<div class="pop-header-title-wrap">
+						<h3 class="pop-header-title">단가 수정</h3>
+						<button class="btn-pop-close js-pop-close" @click="closePop">닫기</button>
+					</div>
+				</header>
+				<div class="pop-container">
+					<div class="pop-common-box">
+						<table class="tb-view-01">
+							<colgroup><col width="30%"><col width=""></colgroup>
+							<tbody>
+								<tr>
+									<th>월 견적단가</th>
+									<td><input type="text" class="full" v-model="estAmt" disabled></td>
+								</tr>
+								<tr>
+									<th>의뢰구분</th>
+									<td>
+										<select class="full" id="prodUnitNm" name="prodUnitNm" title="고객사선택" v-model="prodUnitCd">
+											<option v-for="(item, index) in codeList01" :value="item.cmm_dtl_cd">{{item.cmm_dtl_nm}}</option>
+										</select>
+									</td>
+								</tr>
+								<tr>
+									<th>수정 견적 단가</th>
+									<td><input type="text" class="full" :value="motiEstAmt" :text="motiEstAmt" @input="addComma"></td>
+								</tr>
+								<tr>
+									<th>단가 수정 사유</th>
+									<td><textarea cols="30" rows="3" class="full" v-model="ssmm"></textarea></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+				<div class="pop-bottom">
+					<div class="pop-btn-box">
+						<a href="#" class="btn-pop-bottom js-pop-close" @click="closePop">취소</a>
+						<a href="#" class="btn-pop-bottom" @click="setCalculateEst">단가 수정</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>

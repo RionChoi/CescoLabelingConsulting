@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.fs.calculate.mapper.CalculateMapper">
+    <!-- 정산 목록 -->
+    <select id="getCalculateList" resultType="com.cesco.fs.calculate.dto.CalculateDto" parameterType="com.cesco.fs.calculate.dto.CalculateMgtDto">
+        { CALL [dbo].[Usp_Fs_Get_Calculate_List] (#{p_type}, #{sys_id}, #{start_date}, #{end_date}, #{cst_id}, #{tax_bill_id}, #{fs_bill_yn}, #{cont_id}, #{user_id}) }
+    </select>
+
+    <!-- 정산 상세 목록 -->
+    <select id="getCalculateDtlList" resultType="com.cesco.fs.calculate.dto.CalculateDto" parameterType="com.cesco.fs.calculate.dto.CalculateMgtDto">
+        { CALL [dbo].[Usp_Fs_Get_Calculate_Dtl_List] (#{p_type}, #{sys_id}, #{fs_no}) }
+    </select>
+
+    <!-- 정산 정보 -->
+    <select id="getCalculateInfo" resultType="com.cesco.fs.calculate.dto.CalculateDto" parameterType="com.cesco.fs.calculate.dto.CalculateDto">
+        { CALL [dbo].[Usp_Fs_Get_Calculate_Info] (#{p_type}, #{sys_id}, #{fs_no}) }
+    </select>
+
+    <!-- 견적 단가 수정(상태값 변경) -->
+    <update id="setModiCalculateEst" parameterType="com.cesco.fs.calculate.dto.CalculateReqDto">
+        UPDATE [dbo].TB_FS_ESTMATE
+           SET EST_USE_YN    = #{est_use_yn}
+             , EST_CHG_DATE  = GETDATE()
+             , STATUS        = #{status}
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+             , EST_CHG_ID    = #{est_chg_id}
+         WHERE STATUS        = 'Y'
+           AND EST_USE_YN    = 'Y'
+           AND SYS_ID        = #{sys_id}
+           AND FS_NO         = #{fs_no}
+           AND FS_SEQ        = #{fs_seq}
+           AND EST_SEQ       = #{est_seq}
+    </update>
+
+    <!-- 견적 단가 수정(insert) -->
+    <insert id="setRegCalculateEst" parameterType="com.cesco.fs.calculate.dto.CalculateReqDto">
+        INSERT INTO [dbo].TB_FS_ESTMATE
+        SELECT SYS_ID
+             , FS_NO
+             , FS_SEQ
+             , [dbo].FN_FS_GETSEQUENCE('TB_FS_ESTMATE', SYS_ID, FS_NO + TRIM(CONVERT(VARCHAR(3), FS_SEQ)))
+             , CST_ID
+             , EST_TP_CD
+             , 'Y'
+             , #{est_amt}
+             , NULL
+             , NULL
+             , 'N'
+             , 'Y'
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , #{est_ssmm}
+             , NULL
+          FROM [dbo].TB_FS_ESTMATE
+         WHERE STATUS        = 'N'
+           AND EST_USE_YN    = 'N'
+           AND SYS_ID        = #{sys_id}
+           AND FS_NO         = #{fs_no}
+           AND FS_SEQ        = #{fs_seq}
+           AND EST_SEQ       = #{est_seq}
+    </insert>
+
+    <!-- 견적 단가 수정(의뢰구분 수정) -->
+    <update id="setModiCalculateMst" parameterType="com.cesco.fs.calculate.dto.CalculateReqDto">
+        UPDATE [dbo].TB_FS_MST
+           SET PROD_UNIT_CD  = #{prod_unit_cd}
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+         WHERE STATUS        = 'Y'
+           AND SYS_ID        = #{sys_id}
+           AND FS_NO         = #{fs_no}
+           AND FS_SEQ        = #{fs_seq}
+    </update>
+
+    <!-- 서비스견적서 (insert) -->
+    <insert id="setRegCalculateSvc" parameterType="com.cesco.fs.calculate.dto.CalculateBillDto">
+        <selectKey keyProperty="fs_bill_no" resultType="String" order="BEFORE">
+          SELECT [dbo].FN_FS_GETSEQUENCE('TB_FS_BILL_NO', #{sys_id}, '')
+        </selectKey>
+        INSERT INTO [dbo].TB_FS_BILL
+             ( SYS_ID             
+             , FS_BILL_NO
+             , FS_BILL_SEQ
+             , FS_BILL_NM
+             , BILL_CST_ID
+             , BILL_REQ_CD
+             , BILL_REQ_DATE
+             , TAX_BILL_MAKE_DATE
+             , TAX_BILL_CNT
+             , TAX_BILL_ID
+             , TAX_EMAIL
+             , TAX_BILL_DATE
+             , TAX_BILL_TP_CD
+             , TAX_BILL_NO
+             , SUPPLY_AMT
+             , VAT_AMT
+             , BILL_AR_CD
+             , STATUS
+             , RGSTR_ID
+             , RGSTR_DT
+             , MDFR_ID
+             , MDFR_DT
+             , SSMM
+             , BILL_REP_DATE)
+        VALUES
+             ( #{sys_id}
+             , #{fs_bill_no}
+             , [dbo].FN_FS_GETSEQUENCE('TB_FS_BILL_SEQ', #{sys_id}, #{fs_bill_no})
+             , CONCAT(
+                YEAR(GETDATE()), '년'
+                , FORMAT(MONTH(GETDATE()), '00'), '월_'
+                , FORMAT(DAY(GETDATE()), '00'), '_'
+                , [dbo].FN_FS_GETSNAME2('3', #{sys_id}, #{bill_cst_id}), '_서비스견적서')
+             , #{bill_cst_id}
+             , #{bill_req_cd}
+             , NULL
+             , GETDATE()
+             , #{tax_bill_cnt}
+             , #{tax_bill_id}
+             , #{tax_email}
+             , NULL
+             , #{tax_bill_tp_cd}
+             , NULL
+             , #{supply_amt}
+             , #{vat_amt}
+             , #{bill_ar_cd}
+             , 'Y'
+             , #{rgstr_id}
+             , GETDATE()
+             , #{mdfr_id}
+             , GETDATE()
+             , #{ssmm}
+             , NULL)
+    </insert>
+
+    <!-- 생성된 견적서 번호 견적 단가에 update -->
+    <update id="setModiCalculateSvc" parameterType="com.cesco.fs.calculate.dto.CalculateDto">
+        UPDATE [dbo].TB_FS_ESTMATE
+           SET FS_BILL_NO    = #{fs_bill_no}
+             , FS_BILL_YN    = 'Y'
+             , EST_CHG_DATE  = GETDATE()
+             , MDFR_ID       = #{mdfr_id}
+             , MDFR_DT       = GETDATE()
+         WHERE STATUS        = 'Y'
+           AND EST_USE_YN    = 'Y'
+           AND SYS_ID        = #{sys_id}
+           AND FS_NO         = #{fs_no}
+    </update>
+
+</mapper>
+
+ 

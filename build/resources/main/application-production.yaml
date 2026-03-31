@@ -1,0 +1,92 @@
+#spring 기본설정
+spring:
+  datasource:
+    driver-class-name: net.sf.log4jdbc.sql.jdbcapi.DriverSpy
+    # 임시 URL
+    url: jdbc:log4jdbc:sqlserver://devdb.cesco.biz:11433;DatabaseName=CESCOFS;
+   #  url: jdbc:sqlserver://127.0.0.1:1433;DatabaseName=CESCOFS;
+    username:
+    password:
+    hikari:
+      minimumIdle: 2
+      maximumPoolSize: 10
+      idleTimeout: 30000
+      poolName: maindb-pool
+      maxLifetime: 2000000
+      connectionTimeout: 30000
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: navycuicool@yahoo.com
+    password: navy0311@#
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+server:  
+  servlet:    
+    session:      
+      timeout: 1800
+mybatis:
+  mapper-locations: mybatis/mapper/**/*.xml
+
+################################
+# LOGGING
+#################################
+logging:
+   pattern:
+      console: '%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%4line]){magenta} %clr(%-40.40logger{39}){cyan} %clr(:){red} %m%n%wEx'
+   level:
+      root: info
+      aicluster: debug
+      jdbc:
+         resultset: error
+         audit: error
+      
+#################################
+# 환경설정
+#################################
+env:
+   cors:
+      origins:
+        #  - "localhost:8081"
+         - "localhost:8080"
+      headers:
+         - "Content-Disposition"
+         - "Content-Language"
+         - "Content-Transfer-Encoding"
+         - "Content-Type"
+      methods:
+         - "*"
+      pattern: "/**"
+   cookie: 
+      # domain: "cesco.or.kr"
+      #max-age = jwt.refreshTokenExpireTime / 1000 이어야 한다.
+      max-age: 1800
+      secure: false
+      httpOnly: true
+      path: "/"
+   dir:
+      core-log: "C:/aica/logs/core-logs"
+      upload: "C:/aica/upload"
+
+
+# 휴대폰 본인인증(Nice ID)  
+# nice-id:
+#    site-code: "BY099"
+#    site-password: "VI6llMhRTL5A"
+
+# email:
+#    url: "https://domain"
+#    app-key: "lCQTV8avjXfRfmcU"
+#    secret-key: "i8v3IvXg"
+#    sender-email: "webmaster@atops.or.kr"
+#    sender-name: "CESCO 표시컨설팅"
+
+# sms:
+#    url: "https://domain"
+#    app-key: "SohASg9V5x6Sqp0E"
+#    secret-key: "CXNCA6Iv"
+#    sender-no: "010988835877"

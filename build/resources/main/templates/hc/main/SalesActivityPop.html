@@ -1,0 +1,339 @@
+<script th:inline="javascript" type="text/javascript">
+
+    var ActivityRecord
+    $(document).ready(function(){
+        ActivityRecord = new Vue({
+            el: '#SalesActivityPop',
+            data: {
+                eformLoc		:	[[${eformLoc}]],
+			    eformDir		:	[[${eformDir}]],
+                sendTypeList	: 	[],
+                contentData     :   null,
+                paramsdata1  : { 
+                    sys_id : [[${sys_id}]],
+                    fs_no : [[${fs_no}]],
+                    fs_seq : [[${fs_seq}]],
+                    md_day: [[${md_day}]],
+                    user_id : [[${session.userId}]]
+                },
+            userTpCd : [[${session.userTpCd}]],
+            userId : [[${session.userId}]],
+            userNm : [[${session.userNm}]],
+            sys_id : [[${sys_id}]],
+            fs_no : [[${fs_no}]],
+            fs_seq : [[${fs_seq}]],
+            md_day : [[${md_day}]],
+            email : [[${session.email}]],
+            uscd : ''
+            },
+            mounted: function (){
+                console.log("팝업시작");
+                var _this = this;
+               // var paramsdata = window.localStorage.getItem('consultGridRow');
+                console.log("고객구분11111111111111111: " + _this.userTpCd);
+                console.log("sys_id1111111111111111111: " + _this.sys_id);
+                console.log("fs_no11111111111111111111: " + _this.fs_no);
+                console.log("md_day1111111111111111111: " + _this.md_day);
+                console.log("fs_seq1111111111111111111: " + _this.fs_seq);
+                console.log("fs_seq1111111111111111111: " + _this.paramsdata1.userId);
+                console.log("fs_seq1111111111111111111: " + _this.paramsdata1.userId);
+                let url = '/api/main_hc/getActivityRecord';
+                let msg = '';
+                
+                if(_this.userTpCd == "03"){
+                    uscd = "02"
+                }else{
+                    uscd = "03"
+                }
+                
+                axiosCall('get', url, _this.paramsdata1, function(res){
+                    if(res.data.length != 0){
+                        _this.contentData = res.data;
+                        console.log("데이터확인 : " + _this.contentData.user_tp_cd);
+                        console.log("데이터확인 : " + _this.contentData.con_text11);
+                        var form = document.createElement('form');
+                            form.target = 'eformView';
+                            form.method = 'POST';
+                            form.style.display = 'none';
+                            form.action = _this.eformLoc + '/ActivityRecord.jsp';
+                        
+                        var input0 = document.createElement('input');
+                            input0.type = 'hidden';
+                            input0.name = 'content0';
+                            input0.value = '{\"content0\":' + JSON.stringify(_this.contentData) + '}';
+                        
+                        form.appendChild(input0);
+                        
+                        var fileNm = document.createElement('input');
+                            fileNm.type = 'hidden';
+                            fileNm.name = 'fileNm';
+                            fileNm.value = _this.ctrtId + '_' + _this.userId;
+                            
+                        var eformDir = document.createElement('input');
+                            eformDir.type = 'hidden';
+                            eformDir.name = 'eformDir';
+                            eformDir.value = _this.eformDir;
+
+                        form.appendChild(fileNm);
+                        form.appendChild(eformDir);
+                        document.body.appendChild(form);
+                        form.submit();
+                        }else{                          
+                            console.log("데이터가 존재하지 않습니다1.");
+                        }
+                    }, msg);
+            
+                },
+            methods: {
+                getActivityRecord : function(paramdata){
+                    let url = '/api/main_hc/getActivityRecord';
+                    let _this = this;
+                    let msg = '';
+                    console.log("res데이터9");
+                    console.log("고객구분코드 : " + ActivityRecord.contentData.userTpCd);
+                    console.log("md_day콘텐츠 : " + ActivityRecord.contentData.md_day);
+                    console.log("md_day콘텐츠 : " + ActivityRecord.contentData.md_day);
+                    axiosCall('get', url, _this.paramsdata1, function(res){
+                        if(res.data.length != 0){
+                            console.log(res.data)
+                            _this.contentData = res.data;
+                        }else{
+                            console.log("데이터가 존재하지 않습니다2.");
+                        }
+                    }, msg);
+                },
+                setPeriod: function(e,val) {
+                    let _this = this;
+                    $('.but-tiem').removeClass('mini-btns-togger')
+                    e.target.setAttribute('class','but-tiem mini-btns-togger')
+                    var periodDate = getPeriod(val);
+                    _this.srchParam.start_date = periodDate.startDt;
+                    _this.srchParam.end_date = periodDate.endDt;
+                },
+                closePopup: function() {
+                    let _this = this;
+                    
+                    closeCmmPopup('SalesActivityPop');
+                },
+                reqUpdateToMng: function(){
+                let _this = this;
+                let url = "/api/main_hc/setReqUpdate";
+                let param = {fs_no:_this.contentData.fs_no, cst_mng_id:_this.contentData.cst_mng_id, sys_id:_this.contentData.sys_id}
+                axiosCall('post', url, param, function(res){
+                        console.log("수정요청")
+                        _this.sendCstToMngr(2);
+                        _this.sendAlarmMngr(2);
+                        alert("수정 요청 되었습니다.");                   
+                        })
+            },
+                sendMngrToCst: function() {
+                    let _self = this;
+                    let url = "/api/main_hc/sendMail";
+                    let param = {receive_email:_self.email
+                            , status: '1'
+                            , send_nm:_self.userNm
+                            , user_id:_self.userId
+                            , sys_id:_self.contentData.sys_id
+                            , receive_nm:_self.contentData.cst_mng_nm }
+                    axiosCall('post', url,param,function(res){
+                            console.log("메일")
+                            console.log(res.data)
+                        })
+                },
+                sendCstToMngr: function(type) {
+                    let _self = this;
+                    let url = "/api/main_hc/sendMail";
+                    let param = {receive_email:_self.email
+                            , status: type
+                            , send_nm:_self.userNm
+                            , user_id:_self.userId
+                            , sys_id:_self.contentData.sys_id
+                            , receive_nm:_self.contentData.fs_mng_nm }
+                axiosCall('post', url,param,function(res){
+                            console.log("메일")
+                            console.log(res.data)
+                        })
+                },
+            sendAlarmMngr: function(type){
+                let _self = this;
+                let url = "/api/main_hc/setMsgAlarm";
+                let param = {//fs_mng_id: _self.contentData.fs_mng_id
+                              fs_mng_id: "CESCO00008"
+                            , cst_mng_nm: _self.contentData.cst_mng_nm
+                            , contents: type}
+                            console.log("알림톡데이터:" + param.fs_mng_id)
+                            console.log("알림톡데이터:" + param.cst_mng_nm)
+                            console.log("알림톡데이터:" + param.contents)
+                axiosCall('post', url,param,function(res){
+                            console.log("세스톡")
+                            console.log(res.data)
+                        })
+            },
+            }     
+        });
+    });
+
+    
+    $(window).on('message', function (e) {
+        
+        var json = e.originalEvent.data.resultJson;
+        var result = json.errorCode;
+        
+        var cst_mng_sig_yn
+        if(json.values.clipsign1.data[0] == ''){
+            cst_mng_sig_yn = 'N'
+        }else{
+            //console.log("서명테스트" + cst_mng_sign);
+            cst_mng_sig_yn = 'Y'
+        }
+    
+        var fs_mng_sig_yn
+        if(json.values.clipsign2.data[0] == ''){
+            fs_mng_sig_yn = 'N'
+        }else{
+            fs_mng_sig_yn = 'Y'
+            //console.log("서명테스트" + fs_mng_sign);
+        }
+        console.log("uscd테스트:" + this.uscd);
+        // var usertpcd;
+        if(ActivityRecord.contentData.userTpCd == "03"){
+            uscd = "02"
+        }else{
+            uscd = "03"
+        }
+        var inputJson ={
+            sys_id : ActivityRecord.contentData.sys_id,
+            fs_no : ActivityRecord.contentData.fs_no,
+            fs_seq : ActivityRecord.fs_seq,
+            cst_id : ActivityRecord.contentData.cst_id, 
+            cst_nm : ActivityRecord.contentData.cst_nm,
+            md_day : ActivityRecord.contentData.md_day,
+            md_status_cd : this.uscd, //수행일지 현황
+            //md_yn : '',
+            md_date : ActivityRecord.contentData.md_date,
+            con_text11 : json.values.Inputbox2.data[0],
+            con_text12 : json.values.Inputbox3.data[0],
+            con_text21 : json.values.Inputbox4.data[0],
+            con_text22 : json.values.Inputbox5.data[0],
+            con_text31 : json.values.Inputbox6.data[0],
+            con_text32 : '',
+            con_text41 : '',
+            con_text42 : '',
+            //cst_mng_id : ActivityRecord.contentData.cst_mng_nm,
+            cst_mng_id : '',
+            fs_mng_sig_yn : '',
+            fs_mng_sig_date : '',
+            atch_nm : '',
+            atch_size : '',
+            atch_ref_id : '',
+            url : '',
+            org_file_nm : '',
+            ser_file_nm : '',
+            status : '',
+            rgstr_id : ActivityRecord.userId,
+            rgstr_dt : '',
+            mdfr_id : ActivityRecord.userId,
+            mdfr_dt : '',
+            cst_mng_sign : json.values.clipsign1.data[0],
+            fs_mng_sign : json.values.clipsign2.data[0],
+            //ssmm : '',
+             cst_mng_sig_yn : cst_mng_sig_yn,
+             cst_mng_sig_date : ActivityRecord.cst_mng_sig_date,
+            fs_mng_sig_yn : fs_mng_sig_yn,
+            cst_mng_sign : json.values.clipsign1.data[0],
+            fs_mng_sign : json.values.clipsign2.data[0],
+        }
+    // }else{
+    //     var inputjson = {
+    //         sys_id : ActivityRecord.contentData.sys_id,
+    //         fs_no : ActivityRecord.contentData.fs_no,
+    //         fs_seq : ActivityRecord.fs_seq,
+    //         cst_mng_sig_yn : cst_mng_sig_yn,
+    //         cst_mng_sig_date : ActivityRecord.cst_mng_sig_date,
+    //     }
+    // }
+        var saveData = {};
+        var addData  = [];
+        var error    = '';
+        var loginID	 =	ActivityRecord.userId;
+        var _this = this;
+        //var value = JSON.stringify(json.values);
+        
+        var isPass   = false;
+    
+        json.userId = loginID;
+        
+        if (result == 0) {
+            let url = '/api/main_hc/setActivityRecord';
+                    axiosCall('get',url, inputJson, function (res) {
+                        console.log(res);
+                        console.log("input테스트4");
+                        if (res.data.body != 0) {
+                            alert('서명이 완료되었습니다.');
+                            console.log("input테스트5");
+                            var filter = "win16|win32|win64|mac|macintel";
+                            if (navigator.platform) {
+                                console.log("input테스트6");
+                                if (filter.indexOf(navigator.platform.toLowerCase()) < 0) {
+                                    console.log("input테스트7");
+                                    opener.ActivityRecord
+                                }
+                            }
+                        }
+                        if(fs_mng_sig_yn == 'Y'){
+                        ActivityRecord.sendMngrToCst();
+                    }
+                    if(cst_mng_sig_yn == 'Y'){
+                        ActivityRecord.sendCstToMngr(1);
+                        ActivityRecord.sendAlarmMngr(1);
+                    }
+                    });
+                }
+                else if (result == 1) {
+                    alert('리포트 정보가 없습니다.');
+                    return false;
+                }else if (result == 2) {
+                    alert('리포트 서버 설치가 안되어있습니다.');
+                    return false;
+                }else if (result == 3) {
+                    alert('결과물(document) 파일을 찾지 못하였습니다.');
+                    return false;
+                }else if (result == 4) {
+                    alert('PDF 파일 생성시 오류가 발생하였습니다.');
+                    return false;
+                }else if (result == 5) {
+                    alert('리포트 페이지가 존재하지 않습니다.');
+                    return false;
+                }
+            });
+    </script>
+    
+    <section layout:fragment="content" id="SalesActivityPop"  v-cloak>
+        <div class="layer-pop-wrap">
+            <div class="layer-pop-box large">
+                <div class="pop-wrap">
+                    <h1 class="blind">HACCP 수행일지</h1>
+                    <header class="pop-header">
+                        <div class="pop-header-title-wrap">
+                            <h3 class="pop-header-title">HACCP 수행일지</h3>
+                            <button class="btn-pop-close js-pop-close" @click="closePopup">닫기</button>
+                        </div>
+                    </header>
+                    <div class="pop-container">
+                        <div class="pop-common-box">
+                            <div class="service-detailed">
+                                <div class="e-form-box">
+                                    <div class="e-form-content">
+                                           <iframe name="eformView" style="width: 100%; height: 1000px;"></iframe>
+                                           
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    

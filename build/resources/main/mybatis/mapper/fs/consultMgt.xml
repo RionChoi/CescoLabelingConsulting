@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.cesco.fs.consultMgt.mapper.ConsultMgtMapper">
+    <!-- 컨성팅 관리 표시컨설팅 목록-->
+    <select id="getConsultList" resultType="com.cesco.fs.consultMgt.dto.ConsultMgtDTO" parameterType="com.cesco.fs.consultMgt.dto.ConsultSearchDTO">
+        { CALL [dbo].[Usp_Fs_Get_CoslMgtList] (#{p_type}, #{sys_id}, #{customer}, #{workplace}, #{food_type}, #{product_name}, #{manager}, #{cesco_person_in_charge}, #{start_date}, #{end_date}, #{fs_status_cd}) }
+    </select>
+
+    <!-- 컨설팅 관리 협렵사별 담당자 목록-->
+    <select id="getManagerList" resultType="com.cesco.fs.consultMgt.dto.ConsultManagerDTO">
+        { CALL [dbo].[Usp_Fs_Get_Mst_CorMng_SetList] ( #{p_type}, #{sys_id}, '', #{cst_id}, '') }
+    </select>
+
+    <!-- 컨설팅 신규 번호 생성-->
+    <select id="getFsMstNo" resultType="String">
+        SELECT [dbo].FN_FS_GETSEQUENCE ('TB_FS_MST_FSNO','FS','') AS 'fs_no'
+    </select>
+
+    <!-- 컨설팅 제품 등록-->
+    <insert id="setMstInsList">    
+        <selectKey keyProperty="resultcode" resultType="integer" order="AFTER">
+        <![CDATA[
+                SET XACT_ABORT ON
+                BEGIN TRAN
+        ]]>    
+        <foreach item="item" index="index" collection="list">
+            <if test='index == 0'>
+            <![CDATA[                
+                DELETE FROM [CESCOFS].[dbo].[TB_FS_MST] where SYS_ID = 'FS' AND FS_NO = #{item.fs_no}
+
+                INSERT INTO TB_FS_MST (SYS_ID, FS_NO, FS_SEQ, REG_CHANNEL, CST_ID, ISSUE_DATE, BILL_CST_ID, FS_MNG_ID, PROD_NM, 
+	                    PROD_TP_CD, PROD_TP_CUST_NM, PROD_ITEM, PROD_MAFA_NM, PROD_SER_CD, PROD_UNIT_CD, STATUS, RGSTR_ID,
+	                    RGSTR_DT, MDFR_ID, MDFR_DT , CST_MNG_ID, TAX_BILL_TP_CD, CONT_ID) 
+                VALUES 
+            ]]>
+            </if>
+
+            <if test='index > 0'>
+                <![CDATA[
+                    ,
+                ]]>
+            </if>
+
+            <![CDATA[
+                ('FS', #{item.fs_no}, #{item.fs_seq}, #{item.reg_channel}, #{item.cst_id}, GETDATE(), #{item.bill_cst_id}, #{item.fs_mng_id}, #{item.prod_nm}, 
+	            #{item.prod_tp_cd}, [dbo].[FN_FS_GETSNAME2] ('5', 'FS001', #{item.prod_tp_cd}), #{item.prod_item}, #{item.prod_mafa_nm}, #{item.prod_ser_cd}, #{item.prod_unit_cd}, 'Y', #{item.rgstr_id},
+	            GETDATE(), #{item.mdfr_id}, GETDATE() , #{item.cst_mng_id}, #{item.tax_bill_tp_cd}, #{item.cont_id})
+            ]]>
+
+        </foreach>
+
+        <![CDATA[
+                IF @@ERROR <> 0
+                    BEGIN
+                        ROLLBACK TRAN   
+                        SELECT -1 as resultcode                     
+                    END
+                ELSE
+                    BEGIN
+                        COMMIT TRAN
+                        SELECT 1 as resultcode
+                    END
+        ]]>
+        </selectKey>
+    </insert>
+
+    <!-- 컨설팅 채팅 맴버 등록-->
+    <insert id="setDtlMemInsList">
+        <selectKey keyProperty="resultcode" resultType="integer" order="AFTER">
+        <![CDATA[
+                SET XACT_ABORT ON
+                BEGIN TRAN
+        ]]>
+        <foreach item="item" index="index" collection="list">
+
+            <if test='index == 0'>
+            <![CDATA[                
+
+                DELETE FROM [CESCOFS].[dbo].[TB_FS_DTL_MEM]  where SYS_ID = 'FS' AND FS_NO = #{item.fs_no}
+
+                INSERT INTO TB_FS_DTL_MEM(SYS_ID, FS_NO,FS_CHAT_ID, FS_BILL_MNG_YN, 
+                    STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, FS_CHAT_YN ,FS_CST_ID) 
+                VALUES 
+            ]]>
+            </if>
+
+            <if test='index > 0'>
+                <![CDATA[
+                    ,
+                ]]>
+            </if>
+
+            <![CDATA[
+                ('FS', #{item.fs_no}, #{item.user_id}, #{item.fs_bill_mng_yn},
+			    #{item.status}, #{item.rgstr_id}, GETDATE(), #{item.mdfr_id}, GETDATE(), #{item.fs_chat_yn} ,#{item.cst_id})
+            ]]>
+
+        </foreach>        
+        <![CDATA[                
+            IF @@ERROR <> 0
+                BEGIN
+                    ROLLBACK TRAN
+                    SELECT -1 as resultcode
+                END
+            ELSE
+                BEGIN
+                    COMMIT TRAN
+                    SELECT 1 as resultcode
+                END
+        ]]>
+        </selectKey>
+    </insert>
+    
+    <!-- 컨설팅 제품 견적 금액 등록-->
+    <insert id="setEstmateInsList">   
+        <selectKey keyProperty="resultcode" resultType="integer" order="AFTER">
+        <![CDATA[
+                SET XACT_ABORT ON
+                BEGIN TRAN
+        ]]>     
+        <foreach item="item" index="index" collection="list">
+
+            <if test='index == 0'>
+            <![CDATA[                
+                DELETE FROM [CESCOFS].[dbo].[TB_FS_ESTMATE]  where SYS_ID = 'FS' AND FS_NO = #{item.fs_no}
+
+                INSERT INTO TB_FS_ESTMATE(SYS_ID, FS_NO, FS_SEQ, CST_ID, EST_TP_CD, EST_USE_YN, EST_AMT,
+					EST_CHG_DATE, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, EST_SEQ, FS_BILL_YN)
+                VALUES 
+            ]]>
+            </if>
+
+            <if test='index > 0'>
+                <![CDATA[
+                    ,
+                ]]>
+            </if>
+
+            <![CDATA[
+                (#{item.sys_id}, #{item.fs_no}, #{item.fs_seq}, #{item.cst_id}, #{item.est_tp_cd}, #{item.est_use_yn}, #{item.est_amt},
+				    GETDATE(), #{item.status}, #{item.rgstr_id}, GETDATE(), #{item.mdfr_id}, GETDATE(), [dbo].FN_FS_GETSEQUENCE ('TB_FS_ESTMATE',#{item.sys_id},#{item.search_seq}), 'N')
+            ]]>
+
+        </foreach>
+        <![CDATA[
+                IF @@ERROR <> 0
+                    BEGIN
+                        ROLLBACK TRAN        
+                        SELECT -1 as resultcode
+                    END
+                ELSE
+                    BEGIN
+                        COMMIT TRAN
+                        SELECT 1 as resultcode
+                    END
+        ]]>
+        </selectKey>
+    </insert>
+
+    <!-- 파일 저장-->
+    <insert id="setAttachIns" parameterType="com.cesco.sys.comm.dto.ConsultingAttach" >
+        <![CDATA[
+            INSERT INTO CESCOFS.dbo.TB_FS_ATTACH(SYS_ID, FS_NO, ATCH_SEQ, ATCH_KN_CD, ATCH_NM, ATCH_SIZE, ATCH_REF_ID
+                                    , URL, ORG_FILE_NM, SER_FILE_NM, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM )
+            VALUES( #{sys_id}, #{fs_no}, (SELECT(MAX(A.ATCH_SEQ)+1) from TB_FS_ATTACH A), #{atch_kn_cd}, #{atch_nm}, #{atch_size}, #{atch_ref_id}
+                                    , #{url}, #{org_file_nm}, #{ser_file_nm}, #{status}, #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(), #{ssmm})
+        ]]>
+	</insert>
+
+    <!-- 컨설팅의뢰 제품정보 -->
+    <select id="getConsultProdList" resultType="com.cesco.fs.consultMgt.dto.ConsultProdInfoDTO">
+        { CALL [dbo].[Usp_Fs_Get_Mst_ProdC_List] ( #{sys_id}, #{fs_no}, '') }
+    </select>
+    
+    <!-- 채팅 시작 정보 넣기 -->
+    <insert id="setChatStartIns" parameterType="com.cesco.fs.consultMgt.dto.ConsultChatStartDTO" >
+        <![CDATA[
+            SET XACT_ABORT ON
+            BEGIN TRAN
+
+            DELETE FROM [CESCOFS].[dbo].[TB_FS_DTL_CHAT]  where SYS_ID = #{sys_id} AND FS_NO = #{fs_no} AND FS_CHAT_SEQ = 1
+
+            INSERT INTO TB_FS_DTL_CHAT(SYS_ID, FS_NO, FS_CHAT_ID, FS_CHAT_SEQ, CONTENTS, FS_STATUS_CD, STATUS, 
+                                RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM)
+            VALUES(#{sys_id}, #{fs_no}, #{fs_chat_id}, #{fs_chat_seq}, #{contents}, #{fs_status_cd}, #{status}, 
+                                #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(), '')
+
+            IF @@ERROR <> 0
+                BEGIN
+                    ROLLBACK TRAN
+                END
+            ELSE
+                BEGIN
+                    COMMIT TRAN
+                END
+        ]]>
+    	
+	</insert>
+
+    <!-- 컨설팅 첨부파일 목록-->
+    <select id="getAttachList" resultType="com.cesco.sys.comm.dto.ConsultingAttach">
+        { CALL [dbo].[Usp_Fs_Get_Mst_Atch_List] ( #{sys_id}, #{fs_no}, #{atch_kn_cd}) }
+    </select>
+
+    <!-- 컨설팅의뢰 담당자 목록-->
+    <select id="getConsultManagerList" resultType="com.cesco.fs.consultMgt.dto.ConsultManagerDTO">
+        { CALL [dbo].[Usp_Fs_Get_Mst_CorMng_List] ( #{sys_id}, #{fs_no}, '') }
+    </select>
+    
+    <!-- 컨설팅 수정 관련 정보 삭제-->
+    <delete id="delConsultRelatedInfo" >
+        { CALL [dbo].[Usp_Fs_Del_Consult_Related] ( #{sys_id}, #{fs_no} ) }
+    </delete>
+
+    <!-- 파일 삭제(상태 변경 'N')-->
+    <update id="setAttachFileDel" parameterType="com.cesco.sys.comm.dto.ConsultingAttach" >    
+        UPDATE [CESCOFS].[dbo].[TB_FS_ATTACH] 
+        SET STATUS = #{status}, MDFR_ID = #{mdfr_id}, MDFR_DT = GETDATE()
+        WHERE FS_NO = #{fs_no} AND ATCH_SEQ = #{atch_seq}    	
+	</update>
+
+    <!-- 파일 정보 변경-->  
+    <update id="setAttachFileUpt" parameterType="com.cesco.sys.comm.dto.ConsultingAttach" >
+    	UPDATE [CESCOFS].[dbo].[TB_FS_ATTACH]
+        SET ATCH_NM = #{atch_nm}, STATUS = #{status}, ATCH_REF_ID = #{atch_ref_id}, MDFR_ID = #{mdfr_id}, MDFR_DT = GETDATE()
+        WHERE FS_NO = #{fs_no} AND ATCH_SEQ = #{atch_seq}
+	</update>
+
+    <!-- 즐겨 찾기 MST 등록-->
+    <select id="setBookMstIns" parameterType="com.cesco.fs.consultMgt.dto.ConsultBookMstDTO" resultType="int">
+        <![CDATA[
+            SET NOCOUNT ON
+            INSERT INTO TB_FS_BOOK_MST(SYS_ID, BOOK_TP_CD, FS_MNG_ID, CST_ID, BOOK_NM, STATUS, 
+                                RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM)
+            VALUES(#{sys_id}, #{book_tp_cd}, #{fs_mng_id}, #{cst_id}, #{book_nm}, #{status}, 
+                                #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(), #{ssmm})
+            SELECT @@IDENTITY
+        ]]>    	
+	</select>
+
+    <!-- 즐겨 찾기 MST 삭제 -->
+    <delete id="setBookMstDel" >
+        DELETE FROM TB_FS_BOOK_MST WHERE BOOK_SEQ = #{book_seq} AND FS_MNG_ID = #{fs_mng_id} 
+    </delete>
+
+    <!-- 즐겨 찾기 Dtl 등록-->
+    <insert id="setBookDtlIns" parameterType="com.cesco.fs.consultMgt.dto.ConsultBookDtlDTO" >        
+        INSERT INTO TB_FS_BOOK_DTL(SYS_ID, BOOK_SEQ, CST_REF_ID, CST_REF_NM, STATUS, 
+                        RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM)
+        VALUES(#{sys_id}, #{book_seq}, #{cst_ref_id}, #{cst_ref_nm}, #{status}, 
+                        #{rgstr_id}, GETDATE(), #{mdfr_id}, GETDATE(), #{ssmm})
+	</insert>
+
+    <!-- 즐겨 찾기 목록-->
+    <select id="getBookMstList" resultType="com.cesco.fs.consultMgt.dto.ConsultBookMstDTO" >
+        SELECT SYS_ID, BOOK_SEQ, BOOK_TP_CD, FS_MNG_ID, CST_ID, BOOK_NM, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM
+        FROM TB_FS_BOOK_MST
+        WHERE FS_MNG_ID = #{userId} AND BOOK_NM LIKE '%' + #{book_nm} + '%'
+    </select>
+
+    <!-- 즐겨 찾기 협력사 목록-->
+    <select id="getBookDtlList" resultType="com.cesco.fs.consultMgt.dto.ConsultBookDtlDTO" >
+        SELECT SYS_ID, BOOK_SEQ, BOOK_SUB_SEQ, CST_REF_ID, CST_REF_NM, STATUS, RGSTR_ID, RGSTR_DT, MDFR_ID, MDFR_DT, SSMM
+        FROM TB_FS_BOOK_DTL
+        WHERE BOOK_SEQ = #{book_seq}
+    </select>
+
+    <!-- 협력사 목록 정보-->
+    <select id="getCusTitleInfo" resultType="com.cesco.fs.consultMgt.dto.ConsultCusTitleInfoDTO" >
+        SELECT CST_ID, CST_NM, MDFR_DT
+        FROM TB_FS_CUST
+        WHERE CST_ID = #{cst_id}
+    </select>
+
+    <!-- 다운로드 파일 정보-->
+    <select id="getAttachDownloadInfo" resultType="com.cesco.sys.comm.dto.ConsultingAttach" >    
+        SELECT ORG_FILE_NM, URL, ATCH_SIZE FROM TB_FS_ATTACH WHERE SER_FILE_NM = #{ser_file_nm} 
+	</select>
+
+    <!-- 컨설팅의뢰 담당자 목록-->
+    <select id="getContList" resultType="com.cesco.fs.consultMgt.dto.ConsultStaffDTO">
+        { CALL [dbo].[Usp_Fs_Get_Comm_Staff_Info] ('1', #{user_nm}) }
+    </select>
+    
+</mapper>
+
+ 
