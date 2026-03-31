@@ -190,4 +190,19 @@ CescoLabelingConsulting/
 
 ---
 
+## 💬 Real-time Chat Service Flow (WebSocket)
+
+The system provides real-time broadcasting capabilities (such as generalized chat or broadcast notifications) via a text-based WebSocket handler defined in `sys.communityhandlers`.
+
+1. **Connection Establishment (`afterConnectionEstablished`)**: 
+   - When a client connects to the WebSocket endpoint, their `WebSocketSession` is registered into a globally managed in-memory list (`ArrayList`).
+2. **Message Broadcasting (`handleTextMessage`)**: 
+   - Upon receiving a `TextMessage` payload from any connected client, the server iterates through **all active sessions** in the list and invokes `sendMessage` to broadcast the payload to everyone simultaneously.
+3. **Connection Termination (`afterConnectionClosed`)**: 
+   - When a user disconnects or closes the browser tab, their specific session is safely removed from the list, preventing memory leaks and avoiding errors during future broadcasts.
+
+> **Note**: The current implementation utilizes a lightweight, in-memory generic broadcasting architecture tailored for a single-server deployment.
+
+---
+
 > ⚠️ This project is an internal Food Labeling Consulting & HACCP support system for CESCO.

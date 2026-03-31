@@ -190,4 +190,19 @@ CescoLabelingConsulting/
 
 ---
 
+## 💬 실시간 채팅 서비스 흐름 (WebSocket)
+
+`sys.communityhandlers` 내의 텍스트 기반 WebSocket 핸들러를 통해 전체 접속자 간 실시간 브로드캐스팅(채팅/알림) 기능을 제공합니다.
+
+1. **연결 수립 (`afterConnectionEstablished`)**: 
+   - 사용자가 웹소켓 엔드포인트에 접속하면 해당 `WebSocketSession`이 내부 인메모리 리스트(`ArrayList`)에 추가됩니다.
+2. **메시지 수신 및 브로드캐스트 (`handleTextMessage`)**: 
+   - 특정 클라이언트로부터 텍스트 메시지(`TextMessage` 페이로드)를 수신하면, 서버는 연결된 **모든 활성 세션**을 순회하며 동일하게 메시지를 양방향 전송(`sendMessage`)하여 단순 브로드캐스트 채팅방 역할을 수행합니다.
+3. **연결 해제 (`afterConnectionClosed`)**: 
+   - 사용자가 브라우저를 닫거나 연결을 해제하면, 해당 세션 객체를 리스트에서 즉시 제거하여 리소스 누수(Memory Leak) 및 브로드캐스팅 오류를 방지합니다.
+
+> **Note**: 현재 단일 서버 아키텍처에서 동작하는 인메모리(List) 기반의 단순 브로드캐스팅 방식으로 구현되어 있습니다.
+
+---
+
 > ⚠️ 이 프로젝트는 CESCO 내부용 표시컨설팅 & HACCP 지원 시스템입니다.
